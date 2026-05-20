@@ -1,0 +1,11 @@
+{
+    "name": "hbfoto/video-streaming",
+    "description": "Video streaming site met Mollie betalingen",
+    "require": {
+        "php": ">=8.0",
+        "mollie/mollie-api-php": "^2.0"
+    },
+    "config": {
+        "vendor-dir": "httpdocs/vendor"
+    }
+}

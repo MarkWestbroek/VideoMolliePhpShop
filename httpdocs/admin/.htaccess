@@ -1,0 +1,5 @@
+# Admin map .htaccess — extra bescherming
+Options -Indexes
+
+# Optioneel: beperk toegang tot specifiek IP-adres
+# Require ip 1.2.3.4

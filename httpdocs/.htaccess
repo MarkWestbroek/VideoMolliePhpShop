@@ -1,0 +1,27 @@
+# ============================================================
+# Hoofdmap .htaccess
+# ============================================================
+
+# HTTPS afdwingen
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# Voorkom directe toegang tot includes/
+RewriteRule ^includes/ - [F,L]
+
+# Beveilig vendor map
+RewriteRule ^vendor/ - [F,L]
+
+# Beveilig config bestanden
+<FilesMatch "\.(sql|json|md|lock)$">
+    Require all denied
+</FilesMatch>
+
+# Geen directory listing
+Options -Indexes
+
+# Beveilig hidden files
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>

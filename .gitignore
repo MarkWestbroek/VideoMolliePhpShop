@@ -1,0 +1,24 @@
+# Composer vendor map (niet committen, installeer via: composer install)
+httpdocs/vendor/
+
+# Composer lock heeft waarde voor deployment, maar vendor zelf niet
+# composer.lock is wél nuttig om te committen (verwijder de regel hieronder als gewenst)
+# composer.lock
+
+# Lokale IDE/editor bestanden
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS bestanden
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PHP error logs
+*.log
+error_log
+
+# Eventuele lokale testconfiguratie (maak een config.local.php voor lokaal)
+# config.php bevat ALLEEN placeholders, dus is veilig om te committen
