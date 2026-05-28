@@ -1,9 +1,5 @@
-# Composer vendor map (niet committen, installeer via: composer install)
+# Composer vendor map (niet committen, installeer via deployment action)
 httpdocs/vendor/
-
-# Composer lock heeft waarde voor deployment, maar vendor zelf niet
-# composer.lock is wél nuttig om te committen (verwijder de regel hieronder als gewenst)
-# composer.lock
 
 # Lokale IDE/editor bestanden
 .vscode/
