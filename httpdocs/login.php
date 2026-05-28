@@ -18,7 +18,7 @@ $redirect = '/members/';
 // Valideer de redirect-parameter (alleen relatieve paden toestaan)
 if (!empty($_GET['redirect'])) {
     $r = $_GET['redirect'];
-    if (str_starts_with($r, '/') && !str_starts_with($r, '//')) {
+    if (strpos($r, '/') === 0 && strpos($r, '//') !== 0) {
         $redirect = $r;
     }
 }

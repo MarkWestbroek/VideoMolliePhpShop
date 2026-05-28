@@ -1,14 +1,26 @@
 # Deployment — VideoMolliePhpShop
 
-Stappen om de site te deployen op mijndomein.nl (Plesk, PHP 8.3, MySQL).
+Stappen om de site te deployen op Plesk (getest op `video.msss.nl`).
 
 ---
 
 ## Vereisten
 
-- Toegang tot Plesk op `server020.mijndomeinhosting.nl`
+- Toegang tot Plesk
 - FTP-client (bijv. FileZilla) of Plesk bestandsbeheer
 - Mollie account met API-sleutel
+
+---
+
+## ⚠️ PHP-versie controleren
+
+Deze site vereist **minimaal PHP 8.0**.
+
+1. Plesk → jouw domein → **PHP**
+2. Controleer de versie. Als dit 7.x is: klik op PHP en kies versie **8.1** of **8.2**
+3. Sla op
+
+> Op het screenshot staat PHP 7.4.33 — dit moet omhoog vóór de site werkt.
 
 ---
 
@@ -26,14 +38,25 @@ Stappen om de site te deployen op mijndomein.nl (Plesk, PHP 8.3, MySQL).
 
 ## Stap 2 — Video-map aanmaken buiten de web root
 
-Via Plesk → **SSH-terminal**:
+Er is geen SSH-terminal nodig: doe dit via **Plesk Bestandsbeheer**.
 
-```bash
-mkdir -p ~/private/videos
+1. Plesk → jouw domein → **Files** (bestandsbeheer)
+2. Navigeer naar de map van jouw domein (bijv. `video.msss.nl/`)
+3. Je ziet daar de map `cgi-bin` en straks ook `httpdocs` — klik **niet** in `httpdocs`
+4. Klik op **`+`** (links bovenaan) → **Nieuwe map aanmaken**
+5. Naam: `private` → bevestigen
+6. Klik in de zojuist aangemaakte map `private`
+7. Klik weer **`+`** → **Nieuwe map aanmaken**
+8. Naam: `videos` → bevestigen
+
+Resultaat: `video.msss.nl/private/videos/` — dit is buiten de web root en dus niet direct toegankelijk via de browser.
+
+**VIDEO_PATH voor in `config.php`:**
+Het absolute serverpad is (voor systeemgebruiker `msss`):
 ```
-
-Dit maakt de map `/var/www/vhosts/hbfoto.nl/private/videos` aan.
-Video-bestanden hier uploaden via FTP of Plesk bestandsbeheer (zie stap 6).
+/var/www/vhosts/msss.nl/video.msss.nl/private/videos
+```
+> Weet je het niet zeker? Maak alvast de map aan. In stap 3 leggen we uit hoe je het pad kunt verifiëren.
 
 ---
 
@@ -49,9 +72,11 @@ define('DB_PASS',    'VULDEZELF_wachtwoord');   // ← uit stap 1
 
 define('MOLLIE_API_KEY', 'test_VULDEZELF');     // ← zie stap 4
 
-define('BASE_URL', 'https://hbfoto.nl');        // ← geen trailing slash
+define('BASE_URL', 'https://video.msss.nl');    // ← jouw domein, geen trailing slash
 
-define('VIDEO_PATH', '/var/www/vhosts/hbfoto.nl/private/videos'); // ← uit stap 2
+// Pad naar de private/videos map die je in stap 2 hebt aangemaakt.
+// Voor systeemgebruiker 'msss' is dit doorgaans:
+define('VIDEO_PATH', '/var/www/vhosts/msss.nl/video.msss.nl/private/videos');
 ```
 
 ---
@@ -91,26 +116,25 @@ httpdocs/
 
 ## Stap 6 — Mollie SDK installeren
 
-Via Plesk → **SSH-terminal**:
+Er is geen SSH nodig — gebruik **Plesk PHP Composer**:
 
-```bash
-cd ~/httpdocs
-composer install
-```
+1. Plesk → jouw domein → **PHP Composer**
+2. Stel het pad in op de `httpdocs` map (of laat het standaard staan)
+3. Klik **Install** — Plesk voert `composer install` uit
+4. Na afloop moet de map `httpdocs/vendor/` bestaan
 
-Dit downloadt de Mollie SDK naar `httpdocs/vendor/`.
-
-> Als `composer` niet werkt, probeer: `php /usr/local/bin/composer install`
+> Als PHP Composer niet beschikbaar is: vraag de hoster om `composer install` uit te voeren in `httpdocs/`, of upload de `vendor/` map handmatig na lokaal `composer install` te draaien.
 
 ---
 
 ## Stap 7 — Eerste admin-account instellen
 
-1. Ga naar `https://hbfoto.nl/register.php` en maak een account aan
-2. Open phpMyAdmin → tabel `users`
-3. Zoek het zojuist aangemaakte account en zet `is_admin` op `1`
+1. Ga naar `https://video.msss.nl/register.php` en maak een account aan
+2. Open **phpMyAdmin** (Plesk → Databases → klik op de database → phpMyAdmin)
+3. Klik op tabel `users` → **Verkennen**
+4. Klik op het potloodicoon naast jouw account → zet `is_admin` op `1` → Opslaan
 
-Of via SSH:
+Of via het SQL-tabblad in phpMyAdmin:
 ```sql
 UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 ```
@@ -119,9 +143,10 @@ UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 
 ## Stap 8 — Video's toevoegen
 
-1. Upload videobestanden (MP4, H.264) via FTP naar `~/private/videos/`
+1. Upload videobestanden (MP4, H.264) via **Plesk bestandsbeheer** of FTP naar
+   `video.msss.nl/private/videos/` (de map uit stap 2)
    - Bijv. `les1.mp4`, `les2.mp4`
-2. Log in op `https://hbfoto.nl/admin/`
+2. Log in op `https://video.msss.nl/admin/`
 3. Klik **+ Video toevoegen**
 4. Vul titel, omschrijving, prijs en exact de bestandsnaam in (bijv. `les1.mp4`)
 
@@ -131,15 +156,15 @@ UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 
 Doorloop het volledige betaalproces in **testmodus**:
 
-1. Ga naar `https://hbfoto.nl/register.php` → nieuw testaccount aanmaken
-2. Log in → ga naar `https://hbfoto.nl/members/`
+1. Ga naar `https://video.msss.nl/register.php` → nieuw testaccount aanmaken
+2. Log in → ga naar `https://video.msss.nl/members/`
 3. Klik **Koop toegang** bij een video
 4. Je wordt doorgestuurd naar Mollie testpagina → kies **Betaling geslaagd**
 5. Je wordt teruggestuurd naar de site
 6. De video moet nu afspeelbaar zijn (inclusief seekbar)
 
 Controleer ook:
-- `https://hbfoto.nl/stream.php?id=1` zonder inloggen → moet **403** geven
+- `https://video.msss.nl/stream.php?id=1` zonder inloggen → moet **403** geven
 - Admin → **Verkopen** → de testaankoop moet zichtbaar zijn met status `paid`
 
 ---
