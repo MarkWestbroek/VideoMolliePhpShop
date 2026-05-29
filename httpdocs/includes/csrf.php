@@ -23,4 +23,6 @@ function verifyCsrf(): void
         http_response_code(403);
         exit('Ongeldige CSRF-token. Ga terug en probeer opnieuw.');
     }
+    // Token eenmalig: genereer nieuw token na succesvolle verificatie
+    unset($_SESSION['csrf_token']);
 }

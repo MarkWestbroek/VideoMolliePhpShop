@@ -24,25 +24,33 @@ if (!empty($_GET['redirect'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verifyCsrf();
-
-    $email    = trim($_POST['email']    ?? '');
-    $password =       $_POST['password'] ?? '';
-
-    if ($email === '' || $password === '') {
-        $error = 'Vul e-mailadres en wachtwoord in.';
+    // CSRF manueel checken zodat we netjes de fout in het formulier kunnen tonen
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    if (!hash_equals(csrfToken(), $csrfToken)) {
+        // Token verlopen (sessie timeout of terug-knop) — toon vriendelijke melding
+        $error = 'Je sessie is verlopen. Probeer opnieuw in te loggen.';
+        unset($_SESSION['csrf_token']); // Forceer nieuw token
     } else {
-        $stmt = db()->prepare('SELECT id, email, name, password_hash, is_admin FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        unset($_SESSION['csrf_token']); // Token verbruikt
 
-        if ($user && password_verify($password, $user['password_hash'])) {
-            loginUser($user);
-            header('Location: ' . BASE_URL . $redirect);
-            exit;
+        $email    = trim($_POST['email']    ?? '');
+        $password =       $_POST['password'] ?? '';
+
+        if ($email === '' || $password === '') {
+            $error = 'Vul e-mailadres en wachtwoord in.';
         } else {
-            // Zelfde foutmelding voor onbekend e-mail én fout wachtwoord (geen user enumeration)
-            $error = 'E-mailadres of wachtwoord is onjuist.';
+            $stmt = db()->prepare('SELECT id, email, name, password_hash, is_admin FROM users WHERE email = ? LIMIT 1');
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password_hash'])) {
+                loginUser($user);
+                header('Location: ' . BASE_URL . $redirect);
+                exit;
+            } else {
+                // Zelfde foutmelding voor onbekend e-mail én fout wachtwoord (geen user enumeration)
+                $error = 'E-mailadres of wachtwoord is onjuist.';
+            }
         }
     }
 }
