@@ -20,15 +20,18 @@ $videos = $stmt->fetchAll();
 
 // Haal alle aankopen van deze gebruiker op
 $stmt = db()->prepare(
-    "SELECT video_id, status FROM purchases WHERE user_id = ?"
+    "SELECT video_id, status, amount FROM purchases WHERE user_id = ?"
 );
 $stmt->execute([$user['id']]);
 $purchaseRows = $stmt->fetchAll();
 
-// Maak een snel opzoekbaar array: video_id => status
+// Maak een snel opzoekbaar array: video_id => ['status' => ..., 'amount' => ...]
 $purchases = [];
 foreach ($purchaseRows as $row) {
-    $purchases[(int) $row['video_id']] = $row['status'];
+    $purchases[(int) $row['video_id']] = [
+        'status' => $row['status'],
+        'amount' => (float) $row['amount'],
+    ];
 }
 
 // Tel betaalde aankopen per staffel voor staffelprijsberekening
@@ -36,7 +39,7 @@ $paidPerStaffel = [];
 foreach ($videos as $v) {
     $vid = (int) $v['id'];
     $sid = (int) ($v['staffel_id'] ?? 0);
-    if ($sid > 0 && ($purchases[$vid] ?? null) === 'paid') {
+    if ($sid > 0 && ($purchases[$vid]['status'] ?? null) === 'paid') {
         $paidPerStaffel[$sid] = ($paidPerStaffel[$sid] ?? 0) + 1;
     }
 }
@@ -74,17 +77,20 @@ require_once __DIR__ . '/../includes/header.php';
     <?php foreach ($videos as $v):
         $vid      = (int) $v['id'];
         $sid      = (int) ($v['staffel_id'] ?? 0);
-        $status   = $purchases[$vid] ?? null;
+        $status   = $purchases[$vid]['status'] ?? null;
         $isPaid   = $status === 'paid';
         $isPending = in_array($status, ['open', 'pending'], true);
 
-        // Bereken te betalen prijs
-        if ($sid > 0 && !$isPaid) {
-            $alGekocht  = $paidPerStaffel[$sid] ?? 0;
+        // Bereken te betalen / betaalde prijs
+        if ($isPaid) {
+            // Toon werkelijk betaald bedrag
+            $toonPrijs = $purchases[$vid]['amount'];
+        } elseif ($sid > 0) {
+            $alGekocht    = $paidPerStaffel[$sid] ?? 0;
             $staffelPrijs = berekenStaffelprijs($sid, $alGekocht);
-            $toonPrijs  = $staffelPrijs ?? (float) $v['price'];
+            $toonPrijs    = $staffelPrijs ?? (float) $v['price'];
         } else {
-            $toonPrijs  = (float) $v['price'];
+            $toonPrijs = (float) $v['price'];
         }
     ?>
     <div class="video-card">
