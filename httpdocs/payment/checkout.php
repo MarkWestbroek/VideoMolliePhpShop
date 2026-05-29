@@ -17,8 +17,8 @@ if ($videoId <= 0) {
     exit;
 }
 
-// Video ophalen
-$stmt = db()->prepare('SELECT id, title, price FROM videos WHERE id = ? AND active = 1 LIMIT 1');
+// Video ophalen (inclusief staffel)
+$stmt = db()->prepare('SELECT id, title, price, staffel_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
@@ -37,13 +37,38 @@ if ($existing && $existing['status'] === 'paid') {
     exit;
 }
 
+// Bereken te betalen prijs (staffel of vast)
+$staffelId = (int) ($video['staffel_id'] ?? 0);
+if ($staffelId > 0) {
+    // Tel hoeveel video's van dezelfde staffel al betaald zijn
+    $stmt2 = db()->prepare(
+        "SELECT COUNT(*) FROM purchases p
+         JOIN videos v ON v.id = p.video_id
+         WHERE p.user_id = ? AND p.status = 'paid' AND v.staffel_id = ?"
+    );
+    $stmt2->execute([$user['id'], $staffelId]);
+    $alGekocht = (int) $stmt2->fetchColumn();
+
+    $volgend = $alGekocht + 1;
+    $stmt3 = db()->prepare(
+        'SELECT prijs FROM staffelprijzen
+         WHERE staffel_id = ? AND aantal_van <= ? AND aantal_tot >= ?
+         ORDER BY aantal_van DESC LIMIT 1'
+    );
+    $stmt3->execute([$staffelId, $volgend, $volgend]);
+    $trapRow = $stmt3->fetch();
+    $berekendeprijs = $trapRow ? (float) $trapRow['prijs'] : (float) $video['price'];
+} else {
+    $berekendeprijs = (float) $video['price'];
+}
+
 // Mollie betaling aanmaken
 require_once __DIR__ . '/../vendor/autoload.php';
 
 $mollie = new \Mollie\Api\MollieApiClient();
 $mollie->setApiKey(MOLLIE_API_KEY);
 
-$price  = number_format((float) $video['price'], 2, '.', '');
+$price  = number_format($berekendeprijs, 2, '.', '');
 $userId = (int) $user['id'];
 
 try {
@@ -73,13 +98,13 @@ if ($existing) {
         "UPDATE purchases SET mollie_payment_id = ?, status = 'open', amount = ?
          WHERE user_id = ? AND video_id = ?"
     );
-    $stmt->execute([$payment->id, $video['price'], $userId, $videoId]);
+    $stmt->execute([$payment->id, $berekendeprijs, $userId, $videoId]);
 } else {
     $stmt = db()->prepare(
         "INSERT INTO purchases (user_id, video_id, mollie_payment_id, status, amount)
          VALUES (?, ?, ?, 'open', ?)"
     );
-    $stmt->execute([$userId, $videoId, $payment->id, $video['price']]);
+    $stmt->execute([$userId, $videoId, $payment->id, $berekendeprijs]);
 }
 
 // Doorsturen naar Mollie betaalpagina

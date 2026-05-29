@@ -9,8 +9,13 @@ requireLogin();
 
 $user = currentUser();
 
-// Haal alle actieve video's op
-$stmt = db()->query('SELECT id, title, description, price, thumbnail FROM videos WHERE active = 1 ORDER BY created_at DESC');
+// Haal alle actieve video's op inclusief staffelinfo
+$stmt = db()->query(
+    'SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id
+     FROM videos v
+     WHERE v.active = 1
+     ORDER BY v.created_at DESC'
+);
 $videos = $stmt->fetchAll();
 
 // Haal alle aankopen van deze gebruiker op
@@ -24,6 +29,33 @@ $purchaseRows = $stmt->fetchAll();
 $purchases = [];
 foreach ($purchaseRows as $row) {
     $purchases[(int) $row['video_id']] = $row['status'];
+}
+
+// Tel betaalde aankopen per staffel voor staffelprijsberekening
+$paidPerStaffel = [];
+foreach ($videos as $v) {
+    $vid = (int) $v['id'];
+    $sid = (int) ($v['staffel_id'] ?? 0);
+    if ($sid > 0 && ($purchases[$vid] ?? null) === 'paid') {
+        $paidPerStaffel[$sid] = ($paidPerStaffel[$sid] ?? 0) + 1;
+    }
+}
+
+/**
+ * Bereken prijs voor een video op basis van staffeltrappen.
+ * Geeft de prijs van de VOLGENDE aankoop (= huidige aantal + 1).
+ */
+function berekenStaffelprijs(int $staffelId, int $alGekocht): ?float
+{
+    $volgend = $alGekocht + 1;
+    $stmt = db()->prepare(
+        'SELECT prijs FROM staffelprijzen
+         WHERE staffel_id = ? AND aantal_van <= ? AND aantal_tot >= ?
+         ORDER BY aantal_van DESC LIMIT 1'
+    );
+    $stmt->execute([$staffelId, $volgend, $volgend]);
+    $row = $stmt->fetch();
+    return $row ? (float) $row['prijs'] : null;
 }
 
 $pageTitle = "Mijn video's — HB Foto & Video";
@@ -41,9 +73,19 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="video-grid">
     <?php foreach ($videos as $v):
         $vid      = (int) $v['id'];
+        $sid      = (int) ($v['staffel_id'] ?? 0);
         $status   = $purchases[$vid] ?? null;
         $isPaid   = $status === 'paid';
         $isPending = in_array($status, ['open', 'pending'], true);
+
+        // Bereken te betalen prijs
+        if ($sid > 0 && !$isPaid) {
+            $alGekocht  = $paidPerStaffel[$sid] ?? 0;
+            $staffelPrijs = berekenStaffelprijs($sid, $alGekocht);
+            $toonPrijs  = $staffelPrijs ?? (float) $v['price'];
+        } else {
+            $toonPrijs  = (float) $v['price'];
+        }
     ?>
     <div class="video-card">
         <div class="video-card__thumb">
@@ -65,7 +107,7 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
             <div class="video-card__footer">
-                <span class="video-card__price">&euro; <?= number_format((float) $v['price'], 2, ',', '.') ?></span>
+                <span class="video-card__price">&euro; <?= number_format($toonPrijs, 2, ',', '.') ?></span>
 
                 <?php if ($isPaid): ?>
                     <a href="<?= BASE_URL ?>/members/watch.php?id=<?= $vid ?>" class="btn btn-success btn-sm">
