@@ -47,14 +47,15 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="player-wrap">
     <video
         controls
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture
         preload="metadata"
         playsinline
+        oncontextmenu="return false;"
         style="max-height: 70vh;"
     >
         <source src="<?= BASE_URL ?>/stream.php?id=<?= (int) $video['id'] ?>" type="video/mp4">
-        <p>Jouw browser ondersteunt geen HTML5-video.
-           <a href="<?= BASE_URL ?>/stream.php?id=<?= (int) $video['id'] ?>">Download de video</a>.
-        </p>
+        <p>Jouw browser ondersteunt geen HTML5-video.</p>
     </video>
 </div>
 

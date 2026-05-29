@@ -69,9 +69,11 @@ ignore_user_abort(true);
 set_time_limit(0);
 
 header('Content-Type: ' . $mimeType);
+header('Content-Disposition: inline');
 header('Accept-Ranges: bytes');
-header('Cache-Control: no-store, no-cache');
+header('Cache-Control: no-store, no-cache, private');
 header('X-Content-Type-Options: nosniff');
+header('X-Robots-Tag: noindex');
 
 // Range-verzoek afhandelen (nodig voor seekbar in videospeler)
 if (isset($_SERVER['HTTP_RANGE'])) {

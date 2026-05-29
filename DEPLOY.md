@@ -114,20 +114,36 @@ httpdocs/
 
 ---
 
-## Stap 6 — Mollie SDK installeren
+## Stap 6 — Document root instellen
 
-Er is geen SSH nodig — gebruik **Plesk PHP Composer**:
+> **Let op:** Plesk stelt de document root standaard in op de domeinnaam zonder `httpdocs`. Dat moet gecorrigeerd worden.
 
-1. Plesk → jouw domein → **PHP Composer**
-2. Stel het pad in op de `httpdocs` map (of laat het standaard staan)
-3. Klik **Install** — Plesk voert `composer install` uit
-4. Na afloop moet de map `httpdocs/vendor/` bestaan
-
-> Als PHP Composer niet beschikbaar is: vraag de hoster om `composer install` uit te voeren in `httpdocs/`, of upload de `vendor/` map handmatig na lokaal `composer install` te draaien.
+1. Plesk → jouw domein → **Hosting Settings** (tandwiel)
+2. Verander **Document root** van `video.msss.nl` naar `video.msss.nl/httpdocs`
+3. Opslaan
 
 ---
 
-## Stap 7 — Eerste admin-account instellen
+## Stap 7 — Mollie SDK installeren via Git deployment action
+
+De aanbevolen methode is composer automatisch laten draaien na elke git pull:
+
+1. Plesk → jouw domein → **Git**
+2. Klik op het potlood naast de repository
+3. Vink aan: **"Enable additional deployment actions"**
+4. Voer in als deploy action:
+   ```bash
+   cd /var/www/vhosts/msss.nl/video.msss.nl && composer install --no-dev --optimize-autoloader
+   ```
+   > Pas het pad aan voor andere domeinen: vervang `msss.nl/video.msss.nl` door het juiste pad.
+5. Opslaan → klik **Deploy**
+6. Na afloop moet `httpdocs/vendor/mollie/` bestaan (controleer via bestandsbeheer)
+
+> **Alternatief (SSH beschikbaar):** `cd /pad/naar/httpdocs && composer install --no-dev`
+
+---
+
+## Stap 8 — Eerste admin-account instellen
 
 1. Ga naar `https://video.msss.nl/register.php` en maak een account aan
 2. Open **phpMyAdmin** (Plesk → Databases → klik op de database → phpMyAdmin)
@@ -141,7 +157,7 @@ UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 
 ---
 
-## Stap 8 — Video's toevoegen
+## Stap 9 — Video's toevoegen
 
 1. Upload videobestanden (MP4, H.264) via **Plesk bestandsbeheer** of FTP naar
    `video.msss.nl/private/videos/` (de map uit stap 2)
@@ -152,7 +168,7 @@ UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 
 ---
 
-## Stap 9 — Testen
+## Stap 10 — Testen
 
 Doorloop het volledige betaalproces in **testmodus**:
 
@@ -169,7 +185,7 @@ Controleer ook:
 
 ---
 
-## Stap 10 — Live zetten
+## Stap 11 — Live zetten
 
 1. Vervang in `config.php` de testsleutel (`test_...`) door de live-sleutel (`live_...`)
 2. Upload het gewijzigde `config.php`

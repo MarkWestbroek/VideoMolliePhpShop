@@ -12,7 +12,7 @@ define('DB_CHARSET', 'utf8mb4');
 
 // --- Mollie -------------------------------------------------
 // Test-sleutel begint met 'test_', live-sleutel met 'live_'
-define('MOLLIE_API_KEY', 'test_VULDEZELF');  // ← de token-waarde uit Mollie
+define('MOLLIE_API_KEY', 'test_pSUAUcPBjkVAEyPQzzgDC8nRSvvRej');  // ← de token-waarde uit Mollie
 
 // --- Site ---------------------------------------------------
 // Geen trailing slash
