@@ -26,16 +26,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $filename    = trim($_POST['filename']    ?? '');
         $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
 
-        if ($title === '' || $filename === '' || $price === '') {
+        if ($title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
-        } elseif (!is_numeric($price) || (float) $price < 0.01) {
-            $error = 'Voer een geldige prijs in (minimaal € 0,01).';
+        } elseif ($staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
+            $error = 'Voer een geldige prijs in (minimaal € 0,01) of kies een staffel.';
         } else {
             $safeFilename = basename($filename);
+            $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
             $stmt = db()->prepare(
                 'INSERT INTO videos (title, description, price, staffel_id, filename) VALUES (?,?,?,?,?)'
             );
-            $stmt->execute([$title, $description, (float) $price, $staffelId, $safeFilename]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $safeFilename]);
             $message = 'Video toegevoegd.';
             $action  = 'dashboard';
         }
@@ -51,16 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $active      = isset($_POST['active']) ? 1 : 0;
         $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
 
-        if ($id <= 0 || $title === '' || $filename === '' || $price === '') {
+        if ($id <= 0 || $title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
-        } elseif (!is_numeric($price) || (float) $price < 0.01) {
-            $error = 'Voer een geldige prijs in.';
+        } elseif ($staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
+            $error = 'Voer een geldige prijs in of kies een staffel.';
         } else {
             $safeFilename = basename($filename);
+            $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
             $stmt = db()->prepare(
                 'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, filename=?, active=? WHERE id=?'
             );
-            $stmt->execute([$title, $description, (float) $price, $staffelId, $safeFilename, $active, $id]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $safeFilename, $active, $id]);
             $message = 'Video bijgewerkt.';
             $action  = 'dashboard';
         }
@@ -227,9 +229,9 @@ elseif ($action === 'add_video'): ?>
             <p class="form-hint">Als een staffel gekozen is, overschrijft de staffelprijs de vaste prijs hieronder.</p>
         </div>
 
-        <div class="form-group">
-            <label for="price">Vaste prijs (EUR) <span style="color:var(--danger)">*</span></label>
-            <input type="number" id="price" name="price" required min="0.01" step="0.01"
+        <div class="form-group" id="price-group-add">
+            <label for="price">Vaste prijs (EUR) <span id="price-required-add" style="color:var(--danger)">*</span></label>
+            <input type="number" id="price" name="price" min="0.01" step="0.01"
                    value="<?= htmlspecialchars($_POST['price'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <p class="form-hint">Wordt gebruikt als er geen staffel is, of als terugval.</p>
         </div>
@@ -247,6 +249,20 @@ elseif ($action === 'add_video'): ?>
         </div>
     </form>
 </div>
+<script>
+(function(){
+    var sel = document.getElementById('staffel_id');
+    var inp = document.getElementById('price');
+    var req = document.getElementById('price-required-add');
+    function toggle() {
+        var hasStaffel = sel.value !== '';
+        inp.required = !hasStaffel;
+        req.style.display = hasStaffel ? 'none' : '';
+    }
+    sel.addEventListener('change', toggle);
+    toggle();
+})();
+</script>
 
 <?php
 // ---- Video bewerken ---------------------------------------
@@ -286,9 +302,9 @@ elseif ($action === 'edit_video' && $video): ?>
             <p class="form-hint">Als een staffel gekozen is, overschrijft de staffelprijs de vaste prijs hieronder.</p>
         </div>
 
-        <div class="form-group">
-            <label for="price">Vaste prijs (EUR) <span style="color:var(--danger)">*</span></label>
-            <input type="number" id="price" name="price" required min="0.01" step="0.01"
+        <div class="form-group" id="price-group-edit">
+            <label for="price">Vaste prijs (EUR) <span id="price-required-edit" style="color:var(--danger)">*</span></label>
+            <input type="number" id="price" name="price" min="0.01" step="0.01"
                    value="<?= htmlspecialchars((string)($_POST['price'] ?? $video['price']), ENT_QUOTES, 'UTF-8') ?>">
             <p class="form-hint">Wordt gebruikt als er geen staffel is, of als terugval.</p>
         </div>
@@ -313,6 +329,20 @@ elseif ($action === 'edit_video' && $video): ?>
         </div>
     </form>
 </div>
+<script>
+(function(){
+    var sel = document.getElementById('staffel_id');
+    var inp = document.getElementById('price');
+    var req = document.getElementById('price-required-edit');
+    function toggle() {
+        var hasStaffel = sel.value !== '';
+        inp.required = !hasStaffel;
+        req.style.display = hasStaffel ? 'none' : '';
+    }
+    sel.addEventListener('change', toggle);
+    toggle();
+})();
+</script>
 
 <?php
 // ---- Verkopenoverzicht ------------------------------------
