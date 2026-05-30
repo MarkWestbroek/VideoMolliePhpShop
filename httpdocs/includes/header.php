@@ -21,6 +21,7 @@ $_currentUser = currentUser();
         <nav>
             <?php if ($_currentUser): ?>
                 <a href="<?= BASE_URL ?>/members/">Mijn video&rsquo;s</a>
+                <a href="<?= BASE_URL ?>/members/account.php">Mijn account</a>
                 <?php if ($_currentUser['is_admin']): ?>
                     <a href="<?= BASE_URL ?>/admin/">Beheer</a>
                 <?php endif; ?>

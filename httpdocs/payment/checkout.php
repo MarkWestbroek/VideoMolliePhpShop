@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/events.php';
 
 requireLogin();
 verifyCsrf();
@@ -17,13 +18,19 @@ if ($videoId <= 0) {
     exit;
 }
 
-// Video ophalen (inclusief staffel)
-$stmt = db()->prepare('SELECT id, title, price, staffel_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
+// Video ophalen (inclusief staffel en event)
+$stmt = db()->prepare('SELECT id, title, price, staffel_id, event_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
 if (!$video) {
     header('Location: ' . BASE_URL . '/members/');
+    exit;
+}
+
+// Privacy-controle: bij een event-video moet de gebruiker toegang hebben
+if (!empty($video['event_id']) && !userHasEventAccess((int) $user['id'], (int) $video['event_id'])) {
+    header('Location: ' . BASE_URL . '/members/account.php?error=no_access');
     exit;
 }
 

@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $price       = $_POST['price']    ?? '';
         $filename    = trim($_POST['filename']    ?? '');
         $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
+        $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
         if ($title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
@@ -34,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename = basename($filename);
             $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
             $stmt = db()->prepare(
-                'INSERT INTO videos (title, description, price, staffel_id, filename) VALUES (?,?,?,?,?)'
+                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename) VALUES (?,?,?,?,?,?)'
             );
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $safeFilename]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename]);
             $message = 'Video toegevoegd.';
             $action  = 'dashboard';
         }
@@ -51,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $filename    = trim($_POST['filename']    ?? '');
         $active      = isset($_POST['active']) ? 1 : 0;
         $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
+        $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
         if ($id <= 0 || $title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
@@ -60,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename = basename($filename);
             $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
             $stmt = db()->prepare(
-                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, filename=?, active=? WHERE id=?'
+                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, active=? WHERE id=?'
             );
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $safeFilename, $active, $id]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $active, $id]);
             $message = 'Video bijgewerkt.';
             $action  = 'dashboard';
         }
@@ -90,12 +92,14 @@ if ($action === 'edit_video' && empty($error)) {
 $videos    = [];
 $purchases = [];
 $staffels  = db()->query('SELECT id, naam FROM staffels ORDER BY naam')->fetchAll();
+$events    = db()->query('SELECT id, naam FROM events ORDER BY naam')->fetchAll();
 
 if ($action === 'dashboard') {
     $videos = db()->query(
-        'SELECT v.*, s.naam AS staffel_naam
+        'SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam
          FROM videos v
          LEFT JOIN staffels s ON s.id = v.staffel_id
+         LEFT JOIN events   e ON e.id = v.event_id
          ORDER BY v.created_at DESC'
     )->fetchAll();
 }
@@ -132,6 +136,7 @@ require_once __DIR__ . '/../includes/header.php';
     <a href="?action=purchases"  class="btn btn-sm <?= $action === 'purchases'  ? 'btn-primary' : 'btn-secondary' ?>">Verkopen</a>
     <a href="?action=add_video"  class="btn btn-sm <?= $action === 'add_video'  ? 'btn-primary' : 'btn-secondary' ?>">+ Video toevoegen</a>
     <a href="<?= BASE_URL ?>/admin/staffels.php" class="btn btn-sm btn-secondary">&#9654; Staffels</a>
+    <a href="<?= BASE_URL ?>/admin/events.php" class="btn btn-sm btn-secondary">&#9654; Events</a>
 </nav>
 
 <?php
@@ -152,6 +157,7 @@ if ($action === 'dashboard'): ?>
                 <th>ID</th>
                 <th>Titel</th>
                 <th>Prijs / Staffel</th>
+                <th>Event</th>
                 <th>Bestand</th>
                 <th>Status</th>
                 <th>Acties</th>
@@ -169,6 +175,13 @@ if ($action === 'dashboard'): ?>
                         </span>
                     <?php else: ?>
                         &euro; <?= number_format((float) $v['price'], 2, ',', '.') ?>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($v['event_naam']): ?>
+                        <span class="status-paid">&#128274; <?= htmlspecialchars($v['event_naam'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php else: ?>
+                        <span class="text-muted">Openbaar</span>
                     <?php endif; ?>
                 </td>
                 <td><code style="font-size:.8rem"><?= htmlspecialchars($v['filename'], ENT_QUOTES, 'UTF-8') ?></code></td>
@@ -227,6 +240,20 @@ elseif ($action === 'add_video'): ?>
                 <?php endforeach; ?>
             </select>
             <p class="form-hint">Als een staffel gekozen is, overschrijft de staffelprijs de vaste prijs hieronder.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="event_id">Event (privacy, optioneel)</label>
+            <select id="event_id" name="event_id">
+                <option value="">— Openbaar (zichtbaar voor iedereen) —</option>
+                <?php foreach ($events as $ev): ?>
+                    <option value="<?= (int)$ev['id'] ?>"
+                        <?= ((int)($_POST['event_id'] ?? 0) === (int)$ev['id']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($ev['naam'], ENT_QUOTES, 'UTF-8') ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <p class="form-hint">Bij een event is de video alleen zichtbaar voor gebruikers die de toegangscode hebben ingevoerd.</p>
         </div>
 
         <div class="form-group" id="price-group-add">
@@ -300,6 +327,22 @@ elseif ($action === 'edit_video' && $video): ?>
                 <?php endforeach; ?>
             </select>
             <p class="form-hint">Als een staffel gekozen is, overschrijft de staffelprijs de vaste prijs hieronder.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="event_id">Event (privacy, optioneel)</label>
+            <select id="event_id" name="event_id">
+                <option value="">— Openbaar (zichtbaar voor iedereen) —</option>
+                <?php
+                $currentEventId = (int) ($_POST['event_id'] ?? $video['event_id'] ?? 0);
+                foreach ($events as $ev): ?>
+                    <option value="<?= (int)$ev['id'] ?>"
+                        <?= ($currentEventId === (int)$ev['id']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($ev['naam'], ENT_QUOTES, 'UTF-8') ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <p class="form-hint">Bij een event is de video alleen zichtbaar voor gebruikers die de toegangscode hebben ingevoerd.</p>
         </div>
 
         <div class="form-group" id="price-group-edit">

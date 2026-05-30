@@ -4,18 +4,33 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/events.php';
 
 requireLogin();
 
 $user = currentUser();
 
-// Haal alle actieve video's op inclusief staffelinfo
-$stmt = db()->query(
-    'SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id
-     FROM videos v
-     WHERE v.active = 1
-     ORDER BY v.created_at DESC'
-);
+// Bepaal tot welke events deze gebruiker toegang heeft
+$eventIds = getUserEventIds((int) $user['id']);
+
+// Haal video's op: openbaar (event_id IS NULL) of een event waartoe de gebruiker toegang heeft
+if (empty($eventIds)) {
+    $stmt = db()->query(
+        'SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id, v.event_id
+         FROM videos v
+         WHERE v.active = 1 AND v.event_id IS NULL
+         ORDER BY v.created_at DESC'
+    );
+} else {
+    $placeholders = implode(',', array_fill(0, count($eventIds), '?'));
+    $stmt = db()->prepare(
+        "SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id, v.event_id
+         FROM videos v
+         WHERE v.active = 1 AND (v.event_id IS NULL OR v.event_id IN ($placeholders))
+         ORDER BY v.created_at DESC"
+    );
+    $stmt->execute($eventIds);
+}
 $videos = $stmt->fetchAll();
 
 // Haal alle aankopen van deze gebruiker op
@@ -69,8 +84,15 @@ require_once __DIR__ . '/../includes/header.php';
     <h1>Video's</h1>
 </div>
 
+<p class="text-muted" style="margin-bottom:1.5rem;font-size:.9rem;">
+    Heb je een toegangscode van een event ontvangen?
+    <a href="<?= BASE_URL ?>/members/account.php">Voer deze in op je account</a>
+    om de bijbehorende video's te zien.
+</p>
+
 <?php if (empty($videos)): ?>
-    <p class="text-muted">Er zijn nog geen video's beschikbaar.</p>
+    <p class="text-muted">Er zijn nog geen video's voor je beschikbaar. Heb je een event-toegangscode?
+        <a href="<?= BASE_URL ?>/members/account.php">Voer deze in</a>.</p>
 <?php else: ?>
 
 <div class="video-grid">

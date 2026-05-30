@@ -13,6 +13,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/events.php';
 
 // 1. Authenticatie
 if (!isLoggedIn()) {
@@ -28,12 +29,18 @@ if ($videoId <= 0) {
 }
 
 // 3. Video opzoeken in de database
-$stmt = db()->prepare('SELECT id, filename FROM videos WHERE id = ? AND active = 1 LIMIT 1');
+$stmt = db()->prepare('SELECT id, filename, event_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
 if (!$video) {
     http_response_code(404);
+    exit;
+}
+
+// 3b. Privacy-controle: bij een event-video moet de gebruiker toegang hebben
+if (!empty($video['event_id']) && !userHasEventAccess((int) $_SESSION['user_id'], (int) $video['event_id'])) {
+    http_response_code(403);
     exit;
 }
 

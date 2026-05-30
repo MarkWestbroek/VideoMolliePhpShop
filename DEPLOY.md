@@ -168,6 +168,34 @@ UPDATE users SET is_admin = 1 WHERE email = 'jouw@emailadres.nl';
 
 ---
 
+## Stap 9b — Events / besloten toegangscodes (privacy)
+
+Met events bundel je video's per evenement. Alleen gebruikers die de bijbehorende
+**toegangscode** hebben ingevoerd, zien en kunnen de video's van dat event kopen.
+Video's zonder event blijven openbaar zichtbaar voor alle ingelogde gebruikers.
+
+**Database-migratie (eenmalig):**
+
+1. Open **phpMyAdmin** (Plesk → Databases → klik op de database → phpMyAdmin)
+2. Open het **SQL**-tabblad en plak de inhoud van `sql/migration_events.sql`
+3. Klik **Starten** / **Go**
+
+Dit voegt de tabellen `events` en `event_access` toe en een kolom `event_id` aan `videos`.
+
+**Gebruik:**
+
+1. Admin → **Events** → **+ Event toevoegen**
+   - Vul naam, organisator in. Laat de toegangscode leeg voor een automatisch
+     gegenereerde code, of vul een eigen code in.
+2. Koppel video's aan het event: Admin → video bewerken → kies het **Event** in de dropdown.
+3. Deel de toegangscode met de bezoekers van het event.
+4. Bezoekers voeren de code in:
+   - bij **registratie** (veld "Event-toegangscode"), of
+   - later op **Mijn account** (`/members/account.php`).
+5. Na invoeren verschijnen de event-video's in hun overzicht en kunnen ze gekocht worden.
+
+---
+
 ## Stap 10 — Testen
 
 Doorloop het volledige betaalproces in **testmodus**:

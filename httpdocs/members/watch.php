@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/events.php';
 
 requireLogin();
 
@@ -16,11 +17,17 @@ if ($videoId <= 0) {
 }
 
 // Video ophalen
-$stmt = db()->prepare('SELECT id, title, description FROM videos WHERE id = ? AND active = 1 LIMIT 1');
+$stmt = db()->prepare('SELECT id, title, description, event_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
 if (!$video) {
+    header('Location: ' . BASE_URL . '/members/');
+    exit;
+}
+
+// Privacy-controle: bij een event-video moet de gebruiker toegang hebben
+if (!empty($video['event_id']) && !userHasEventAccess((int) $user['id'], (int) $video['event_id'])) {
     header('Location: ' . BASE_URL . '/members/');
     exit;
 }

@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/events.php';
 
 if (isLoggedIn()) {
     header('Location: ' . BASE_URL . '/members/');
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email    = trim($_POST['email']     ?? '');
     $password =       $_POST['password'] ?? '';
     $password2 =      $_POST['password2'] ?? '';
+    $eventCode = trim($_POST['event_code'] ?? '');
 
     // Validatie
     if ($name === '' || $email === '' || $password === '') {
@@ -46,8 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)'
             );
             $stmt->execute([$email, $hash, $name]);
+            $newUserId = (int) db()->lastInsertId();
 
-            $success = 'Account aangemaakt! Je kunt nu <a href="' . BASE_URL . '/login.php">inloggen</a>.';
+            $extra = '';
+            if ($eventCode !== '') {
+                $result = redeemEventCode($newUserId, $eventCode);
+                $extra = $result['ok']
+                    ? ' ' . htmlspecialchars($result['message'], ENT_QUOTES, 'UTF-8')
+                    : ' <strong>Let op:</strong> ' . htmlspecialchars($result['message'], ENT_QUOTES, 'UTF-8')
+                        . ' Je kunt de code later toevoegen op je accountpagina.';
+            }
+
+            $success = 'Account aangemaakt! Je kunt nu <a href="' . BASE_URL . '/login.php">inloggen</a>.' . $extra;
         }
     }
 }
@@ -95,6 +107,13 @@ require_once __DIR__ . '/includes/header.php';
             <label for="password2">Wachtwoord herhalen</label>
             <input type="password" id="password2" name="password2" required
                    minlength="8" autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+            <label for="event_code">Event-toegangscode (optioneel)</label>
+            <input type="text" id="event_code" name="event_code" maxlength="64"
+                   value="<?= htmlspecialchars($_POST['event_code'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <p class="form-hint">Heb je een code van een event ontvangen? Vul deze hier in voor directe toegang. Je kunt dit ook later doen.</p>
         </div>
 
         <button type="submit" class="btn btn-primary btn-full">Account aanmaken</button>
