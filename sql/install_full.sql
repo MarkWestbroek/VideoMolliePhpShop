@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `password_hash` VARCHAR(255)  NOT NULL,
     `name`          VARCHAR(100)  NOT NULL,
     `is_admin`      TINYINT(1)    NOT NULL DEFAULT 0,
+    `last_activity` DATETIME      DEFAULT NULL COMMENT 'Bijgewerkt bij elke request (max 1x per minuut)',
     `created_at`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_email` (`email`)

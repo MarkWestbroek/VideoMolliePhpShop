@@ -42,6 +42,16 @@ function currentUser(): ?array
         $stmt->execute([$_SESSION['user_id']]);
         $row  = $stmt->fetch();
         $user = $row ?: null;
+
+        // last_activity bijwerken, maar maximaal 1x per minuut (via sessie-cache)
+        if ($user !== null) {
+            $now = time();
+            if (empty($_SESSION['last_activity_updated']) || $now - $_SESSION['last_activity_updated'] >= 60) {
+                db()->prepare('UPDATE users SET last_activity = NOW() WHERE id = ?')
+                    ->execute([$user['id']]);
+                $_SESSION['last_activity_updated'] = $now;
+            }
+        }
     }
 
     return $user;

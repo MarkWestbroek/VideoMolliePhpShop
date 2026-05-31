@@ -43,8 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ============================================================
 
 // Alle gebruikers + event-toegangen + aankopen als sub-query tellers
+// "Online" = last_activity binnen de laatste 15 minuten
 $users = db()->query(
-    'SELECT u.id, u.email, u.name, u.is_admin, u.created_at,
+    'SELECT u.id, u.email, u.name, u.is_admin, u.created_at, u.last_activity,
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = \'paid\' THEN p.amount ELSE 0 END) AS total_paid
@@ -52,7 +53,7 @@ $users = db()->query(
      LEFT JOIN event_access ea ON ea.user_id = u.id
      LEFT JOIN purchases    p  ON p.user_id  = u.id
      GROUP BY u.id
-     ORDER BY u.created_at DESC'
+     ORDER BY u.last_activity DESC, u.created_at DESC'
 )->fetchAll();
 
 // Detail-view: één gebruiker uitklappen
@@ -130,6 +131,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <th>Naam</th>
                 <th>E-mail</th>
                 <th>Geregistreerd</th>
+                <th title="Actief binnen de laatste 15 minuten">Online</th>
                 <th>Events</th>
                 <th>Aankopen</th>
                 <th>Betaald</th>
@@ -151,6 +153,26 @@ require_once __DIR__ . '/../includes/header.php';
                 <td style="font-size:.88rem"><?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td style="font-size:.85rem;white-space:nowrap">
                     <?= date('d-m-Y', strtotime($u['created_at'])) ?>
+                </td>
+                <td style="text-align:center">
+                    <?php
+                    $isOnline = $u['last_activity']
+                        && (time() - strtotime($u['last_activity'])) <= 900;
+                    ?>
+                    <?php if ($isOnline): ?>
+                        <span class="status-paid" title="Actief: <?= date('H:i', strtotime($u['last_activity'])) ?>">&#9679; online</span>
+                    <?php elseif ($u['last_activity']): ?>
+                        <span class="text-muted" style="font-size:.8rem" title="Laatst actief">
+                            <?php
+                            $diff = time() - strtotime($u['last_activity']);
+                            if ($diff < 3600)       echo round($diff / 60) . ' min geleden';
+                            elseif ($diff < 86400)  echo round($diff / 3600) . ' u geleden';
+                            else                    echo date('d-m-Y', strtotime($u['last_activity']));
+                            ?>
+                        </span>
+                    <?php else: ?>
+                        <span class="text-muted">—</span>
+                    <?php endif; ?>
                 </td>
                 <td style="text-align:center">
                     <?php if ($u['event_count'] > 0): ?>
