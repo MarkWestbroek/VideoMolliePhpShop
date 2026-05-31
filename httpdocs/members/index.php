@@ -100,8 +100,9 @@ require_once __DIR__ . '/../includes/header.php';
         $vid      = (int) $v['id'];
         $sid      = (int) ($v['staffel_id'] ?? 0);
         $status   = $purchases[$vid]['status'] ?? null;
-        $isPaid   = $status === 'paid';
+        $isPaid    = $status === 'paid';
         $isPending = in_array($status, ['open', 'pending'], true);
+        $isGratis  = !$isPaid && !$isPending && (float)$v['price'] === 0.0 && empty($v['staffel_id']);
 
         // Bereken te betalen / betaalde prijs
         if ($isPaid) {
@@ -135,40 +136,55 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
             <div class="video-card__footer">
-                <span class="video-card__price"
-                    <?php if ($sid > 0 && !$isPaid): ?>
-                        title="Staffelkorting: hoe meer video's uit deze serie je koopt, hoe lager de prijs per video."
-                    <?php elseif ($isPaid): ?>
-                        title="Jouw aankoopbedrag"
-                    <?php endif; ?>>
-                    &euro; <?= number_format($toonPrijs, 2, ',', '.') ?>
-                    <?php if ($sid > 0 && !$isPaid): ?>
-                        <span style="font-size:.75rem;color:var(--text-muted);cursor:help;" title="Staffelkorting: hoe meer video's uit deze serie je koopt, hoe lager de prijs.">&#9432;</span>
-                    <?php endif; ?>
-                </span>
-
-                <?php if ($isPaid): ?>
-                    <a href="<?= BASE_URL ?>/members/watch.php?id=<?= $vid ?>" class="btn btn-success btn-sm"
-                       title="Je hebt deze video gekocht — klik om te bekijken">
-                        &#9654; Bekijk
-                    </a>
-                <?php elseif ($isPending): ?>
-                    <span class="badge-pending"
-                          title="Je betaling wordt verwerkt. Dit duurt meestal minder dan een minuut. Ververs de pagina om de status te zien.">
-                        Betaling in behandeling
-                    </span>
-                <?php else: ?>
+                <?php if ($isGratis): ?>
+                    <span class="badge-free tt" data-tooltip="Gratis te bekijken — geen betaling nodig.">Gratis</span>
                     <form method="post" action="<?= BASE_URL ?>/payment/checkout.php">
                         <input type="hidden" name="video_id" value="<?= $vid ?>">
                         <input type="hidden" name="csrf_token" value="<?php
                             require_once __DIR__ . '/../includes/csrf.php';
                             echo htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8');
                         ?>">
-                        <button type="submit" class="btn btn-primary btn-sm"
-                                title="Veilig betalen via Mollie (iDEAL, creditcard e.d.). Na betaling kun je de video direct bekijken.">
-                            Koop toegang
+                        <button type="submit" class="btn btn-success btn-sm tt"
+                                data-tooltip="Geen betaling nodig — klik om direct te bekijken.">
+                            &#9654; Kijk gratis
                         </button>
                     </form>
+                <?php else: ?>
+                    <span class="video-card__price tt"
+                        data-tooltip="<?php
+                            if ($isPaid)       echo 'Jouw aankoopbedrag';
+                            elseif ($sid > 0)  echo "Staffelkorting: hoe meer video's uit deze serie je koopt, hoe lager de prijs.";
+                            else               echo 'Eenmalige prijs voor permanente toegang tot deze video.';
+                        ?>">
+                        &euro; <?= number_format($toonPrijs, 2, ',', '.') ?>
+                        <?php if ($sid > 0 && !$isPaid): ?>
+                            <span style="font-size:.8rem;opacity:.65;">&#9432;</span>
+                        <?php endif; ?>
+                    </span>
+
+                    <?php if ($isPaid): ?>
+                        <a href="<?= BASE_URL ?>/members/watch.php?id=<?= $vid ?>" class="btn btn-success btn-sm tt"
+                           data-tooltip="Je hebt deze video gekocht — klik om te bekijken.">
+                            &#9654; Bekijk
+                        </a>
+                    <?php elseif ($isPending): ?>
+                        <span class="badge-pending tt"
+                              data-tooltip="Je betaling wordt verwerkt. Dit duurt meestal minder dan een minuut. Ververs de pagina om de status te zien.">
+                            Betaling in behandeling
+                        </span>
+                    <?php else: ?>
+                        <form method="post" action="<?= BASE_URL ?>/payment/checkout.php">
+                            <input type="hidden" name="video_id" value="<?= $vid ?>">
+                            <input type="hidden" name="csrf_token" value="<?php
+                                require_once __DIR__ . '/../includes/csrf.php';
+                                echo htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8');
+                            ?>">
+                            <button type="submit" class="btn btn-primary btn-sm tt"
+                                    data-tooltip="Veilig betalen via Mollie (iDEAL, creditcard e.d.). Na betaling kun je direct bekijken.">
+                                Koop toegang
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

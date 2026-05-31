@@ -190,7 +190,7 @@ p  { margin-bottom: .75rem; }
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: hidden;
+    overflow: visible;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
@@ -199,6 +199,7 @@ p  { margin-bottom: .75rem; }
 .video-card__thumb {
     aspect-ratio: 16/9;
     background: #222;
+    border-radius: var(--radius) var(--radius) 0 0;
     overflow: hidden;
     position: relative;
 }
@@ -243,6 +244,16 @@ p  { margin-bottom: .75rem; }
     padding: .25rem .7rem;
     border-radius: 999px;
     font-size: .8rem;
+}
+.badge-free {
+    display: inline-block;
+    background: rgba(76,175,125,.15);
+    color: var(--success);
+    border: 1px solid var(--success);
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    font-size: .9rem;
+    font-weight: 600;
 }
 
 /* ---- Video player ----------------------------------------- */
@@ -290,7 +301,7 @@ p  { margin-bottom: .75rem; }
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: auto;
+    overflow: visible;
     margin-bottom: 2rem;
 }
 
@@ -329,4 +340,52 @@ p  { margin-bottom: .75rem; }
     nav { gap: .75rem; }
     .form-card { padding: 1.25rem; }
     .video-grid { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
 }
+
+/* ---- Custom tooltips -------------------------------------- */
+/* Gebruik: <element class="tt" data-tooltip="Uitleg hier">   */
+.tt {
+    position: relative;
+    cursor: help;
+}
+.tt[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff3e0;
+    color: #2a1800;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: .75rem 1.1rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.55;
+    white-space: normal;
+    width: 260px;
+    text-align: left;
+    box-shadow: 0 4px 18px rgba(0,0,0,.4);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .18s ease;
+    z-index: 500;
+    font-style: normal;
+    text-transform: none;
+    letter-spacing: normal;
+}
+.tt[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);    border: 7px solid transparent;
+    border-top-color: var(--accent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .18s ease;
+    z-index: 501;
+}
+.tt:hover[data-tooltip]::after,
+.tt:hover[data-tooltip]::before { opacity: 1; }

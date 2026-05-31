@@ -51,16 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $price       = $_POST['price']    ?? '';
         $filename    = trim($_POST['filename']    ?? '');
         $active      = isset($_POST['active']) ? 1 : 0;
-        $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
+        $isGratis    = isset($_POST['gratis']);
+        $staffelId   = (!$isGratis && ($_POST['staffel_id'] ?? '') !== '') ? (int) $_POST['staffel_id'] : null;
         $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
         if ($id <= 0 || $title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
-        } elseif ($staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
-            $error = 'Voer een geldige prijs in of kies een staffel.';
+        } elseif (!$isGratis && $staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
+            $error = 'Voer een geldige prijs in, kies een staffel, of vink “Gratis” aan.';
         } else {
-            $safeFilename = basename($filename);
-            $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
+            $safeFilename  = basename($filename);
+            $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
                 'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, active=? WHERE id=?'
             );
@@ -158,8 +159,8 @@ if ($action === 'dashboard'): ?>
             <tr>
                 <th>ID</th>
                 <th>Titel</th>
-                <th title="Vaste prijs of staffel (trapsgewijze korting)">Prijs / Staffel</th>
-                <th title="Besloten event: video is alleen zichtbaar voor gebruikers met de toegangscode">Event</th>
+                <th class="tt" data-tooltip="Vaste prijs of staffel (trapsgewijze korting)">Prijs / Staffel</th>
+                <th class="tt" data-tooltip="Besloten event: video is alleen zichtbaar voor gebruikers met de toegangscode">Event</th>
                 <th>Bestand</th>
                 <th>Status</th>
                 <th>Acties</th>
@@ -172,9 +173,11 @@ if ($action === 'dashboard'): ?>
                 <td><?= htmlspecialchars($v['title'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
                     <?php if ($v['staffel_naam']): ?>
-                        <span title="Trapsgewijze prijs — vaste terugvalprijs: &euro; <?= number_format((float)$v['price'], 2, ',', '.') ?>. Beheer via Staffels.">
+                        <span class="tt" data-tooltip="Trapsgewijze prijs — vaste terugvalprijs: &euro; <?= number_format((float)$v['price'], 2, ',', '.') ?>. Beheer via Staffels.">
                             &#9654; <?= htmlspecialchars($v['staffel_naam'], ENT_QUOTES, 'UTF-8') ?>
                         </span>
+                    <?php elseif ((float)$v['price'] === 0.0): ?>
+                        <span class="badge-free">Gratis</span>
                     <?php else: ?>
                         &euro; <?= number_format((float) $v['price'], 2, ',', '.') ?>
                     <?php endif; ?>
@@ -231,6 +234,14 @@ elseif ($action === 'add_video'): ?>
         </div>
 
         <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="gratis-add" name="gratis" value="1"
+                       <?= isset($_POST['gratis']) ? 'checked' : '' ?>>
+                <span><strong>Gratis</strong> &mdash; video is gratis te bekijken voor ingelogde gebruikers</span>
+            </label>
+        </div>
+
+        <div class="form-group" id="staffel-group-add">
             <label for="staffel_id">Staffel (optioneel)</label>
             <select id="staffel_id" name="staffel_id">
                 <option value="">— Geen staffel (vaste prijs) —</option>
@@ -280,14 +291,22 @@ elseif ($action === 'add_video'): ?>
 </div>
 <script>
 (function(){
-    var sel = document.getElementById('staffel_id');
-    var inp = document.getElementById('price');
-    var req = document.getElementById('price-required-add');
+    var chk        = document.getElementById('gratis-add');
+    var sel        = document.getElementById('staffel_id');
+    var inp        = document.getElementById('price');
+    var req        = document.getElementById('price-required-add');
+    var staffelGrp = document.getElementById('staffel-group-add');
+    var priceGrp   = document.getElementById('price-group-add');
     function toggle() {
+        var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
-        inp.required = !hasStaffel;
-        req.style.display = hasStaffel ? 'none' : '';
+        staffelGrp.style.display = gratis ? 'none' : '';
+        priceGrp.style.display   = gratis ? 'none' : '';
+        inp.required = !gratis && !hasStaffel;
+        inp.min      = gratis ? '0' : '0.01';
+        req.style.display = (gratis || hasStaffel) ? 'none' : '';
     }
+    chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
     toggle();
 })();
@@ -315,7 +334,16 @@ elseif ($action === 'edit_video' && $video): ?>
             <textarea id="description" name="description" maxlength="5000"><?= htmlspecialchars($_POST['description'] ?? $video['description'], ENT_QUOTES, 'UTF-8') ?></textarea>
         </div>
 
+        <?php $isGratisEdit = isset($_POST['gratis']) || ((float)($video['price'] ?? 1) === 0.0 && empty($video['staffel_id'])); ?>
         <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="gratis-edit" name="gratis" value="1"
+                       <?= $isGratisEdit ? 'checked' : '' ?>>
+                <span><strong>Gratis</strong> &mdash; video is gratis te bekijken voor ingelogde gebruikers</span>
+            </label>
+        </div>
+
+        <div class="form-group" id="staffel-group-edit">
             <label for="staffel_id">Staffel (optioneel)</label>
             <select id="staffel_id" name="staffel_id">
                 <option value="">— Geen staffel (vaste prijs) —</option>
@@ -376,14 +404,22 @@ elseif ($action === 'edit_video' && $video): ?>
 </div>
 <script>
 (function(){
-    var sel = document.getElementById('staffel_id');
-    var inp = document.getElementById('price');
-    var req = document.getElementById('price-required-edit');
+    var chk        = document.getElementById('gratis-edit');
+    var sel        = document.getElementById('staffel_id');
+    var inp        = document.getElementById('price');
+    var req        = document.getElementById('price-required-edit');
+    var staffelGrp = document.getElementById('staffel-group-edit');
+    var priceGrp   = document.getElementById('price-group-edit');
     function toggle() {
+        var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
-        inp.required = !hasStaffel;
-        req.style.display = hasStaffel ? 'none' : '';
+        staffelGrp.style.display = gratis ? 'none' : '';
+        priceGrp.style.display   = gratis ? 'none' : '';
+        inp.required = !gratis && !hasStaffel;
+        inp.min      = gratis ? '0' : '0.01';
+        req.style.display = (gratis || hasStaffel) ? 'none' : '';
     }
+    chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
     toggle();
 })();

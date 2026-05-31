@@ -69,6 +69,24 @@ if ($staffelId > 0) {
     $berekendeprijs = (float) $video['price'];
 }
 
+// Gratis video: toegang direct verlenen zonder betaling via Mollie
+if ($berekendeprijs <= 0.0) {
+    $uid = (int) $user['id'];
+    if ($existing) {
+        $stmt = db()->prepare(
+            "UPDATE purchases SET mollie_payment_id = NULL, status = 'paid', amount = 0 WHERE user_id = ? AND video_id = ?"
+        );
+        $stmt->execute([$uid, $videoId]);
+    } else {
+        $stmt = db()->prepare(
+            "INSERT INTO purchases (user_id, video_id, mollie_payment_id, status, amount) VALUES (?, ?, NULL, 'paid', 0)"
+        );
+        $stmt->execute([$uid, $videoId]);
+    }
+    header('Location: ' . BASE_URL . '/members/watch.php?id=' . $videoId);
+    exit;
+}
+
 // Mollie betaling aanmaken
 require_once __DIR__ . '/../vendor/autoload.php';
 
