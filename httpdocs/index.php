@@ -32,8 +32,7 @@ if (!empty($_SESSION['user_id'])) {
 <body>
     <div class="landing">
         <h1>HB Foto &amp; Video</h1>
-        <p>Professionele fotografie- en videocursussen.<br>
-           Bekijk en koop video's na het inloggen.</p>
+        <p>Maak een gratis account aan voor het bestellen en bekijken van video's.</p>
         <div class="btn-group">
             <a href="/login.php"    class="btn-lg btn-primary">Inloggen</a>
             <a href="/register.php" class="btn-lg btn-outline">Account aanmaken</a>

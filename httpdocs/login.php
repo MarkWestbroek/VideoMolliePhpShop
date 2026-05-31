@@ -85,6 +85,9 @@ require_once __DIR__ . '/includes/header.php';
     </form>
 
     <p class="text-center mt-2 text-muted" style="font-size:.9rem">
+        <a href="<?= BASE_URL ?>/forgot_password.php">Wachtwoord vergeten?</a>
+    </p>
+    <p class="text-center mt-1 text-muted" style="font-size:.9rem">
         Nog geen account? <a href="<?= BASE_URL ?>/register.php">Registreer hier</a>
     </p>
 </div>
