@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/ratelimit.php';
 
 // Al ingelogd? Stuur door.
 if (isLoggedIn()) {
@@ -33,23 +34,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         unset($_SESSION['csrf_token']); // Token verbruikt
 
-        $email    = trim($_POST['email']    ?? '');
-        $password =       $_POST['password'] ?? '';
-
-        if ($email === '' || $password === '') {
-            $error = 'Vul e-mailadres en wachtwoord in.';
+        // Rate limiting controleren vóór we iets doen
+        if (isRateLimited('login')) {
+            $wacht = rateLimitWaitSeconds('login');
+            $error = 'Te veel mislukte pogingen. Probeer het over '
+                . ceil($wacht / 60) . ' minuten opnieuw.';
         } else {
-            $stmt = db()->prepare('SELECT id, email, name, password_hash, is_admin FROM users WHERE email = ? LIMIT 1');
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
+            $email    = trim($_POST['email']    ?? '');
+            $password =       $_POST['password'] ?? '';
 
-            if ($user && password_verify($password, $user['password_hash'])) {
-                loginUser($user);
-                header('Location: ' . BASE_URL . $redirect);
-                exit;
+            if ($email === '' || $password === '') {
+                $error = 'Vul e-mailadres en wachtwoord in.';
             } else {
-                // Zelfde foutmelding voor onbekend e-mail én fout wachtwoord (geen user enumeration)
-                $error = 'E-mailadres of wachtwoord is onjuist.';
+                $stmt = db()->prepare('SELECT id, email, name, password_hash, is_admin FROM users WHERE email = ? LIMIT 1');
+                $stmt->execute([$email]);
+                $user = $stmt->fetch();
+
+                if ($user && password_verify($password, $user['password_hash'])) {
+                    clearAttempts('login');
+                    loginUser($user);
+                    header('Location: ' . BASE_URL . $redirect);
+                    exit;
+                } else {
+                    recordAttempt('login');
+                    // Zelfde foutmelding voor onbekend e-mail én fout wachtwoord (geen user enumeration)
+                    $error = 'E-mailadres of wachtwoord is onjuist.';
+                    if (isRateLimited('login')) {
+                        $wacht = rateLimitWaitSeconds('login');
+                        $error = 'Te veel mislukte pogingen. Probeer het over '
+                            . ceil($wacht / 60) . ' minuten opnieuw.';
+                    }
+                }
             }
         }
     }

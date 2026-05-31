@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/ratelimit.php';
 
 if (isLoggedIn()) {
     header('Location: ' . BASE_URL . '/members/');
@@ -21,7 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Voer een geldig e-mailadres in.';
+    } elseif (isRateLimited('forgot_password')) {
+        $wacht = rateLimitWaitSeconds('forgot_password');
+        $error = 'Te veel aanvragen. Probeer het over ' . ceil($wacht / 60) . ' minuten opnieuw.';
     } else {
+        recordAttempt('forgot_password');
         // Zoek gebruiker — zelfde melding tonen ongeacht of het e-mail bestaat (geen user enumeration)
         $stmt = db()->prepare('SELECT id, name FROM users WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
@@ -66,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Altijd dezelfde melding tonen
         $sent = true;
     }
-}
+    }
 
 $pageTitle = 'Wachtwoord vergeten — HB Foto & Video';
 require_once __DIR__ . '/includes/header.php';

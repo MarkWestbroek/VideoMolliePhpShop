@@ -6,6 +6,7 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/events.php';
+require_once __DIR__ . '/../includes/ratelimit.php';
 
 requireLogin();
 
@@ -15,12 +16,19 @@ $error   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
-    $code   = trim($_POST['event_code'] ?? '');
-    $result = redeemEventCode((int) $user['id'], $code);
-    if ($result['ok']) {
-        $message = $result['message'];
+    $code = trim($_POST['event_code'] ?? '');
+    if (isRateLimited('event_code')) {
+        $wacht = rateLimitWaitSeconds('event_code');
+        $error = 'Te veel pogingen. Probeer het over ' . ceil($wacht / 60) . ' minuten opnieuw.';
     } else {
-        $error = $result['message'];
+        $result = redeemEventCode((int) $user['id'], $code);
+        if ($result['ok']) {
+            clearAttempts('event_code');
+            $message = $result['message'];
+        } else {
+            recordAttempt('event_code');
+            $error = $result['message'];
+        }
     }
 }
 

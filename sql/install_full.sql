@@ -134,3 +134,15 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
     UNIQUE KEY `uq_pr_token` (`token`),
     CONSTRAINT `fk_pr_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 8. Rate limiting (login-pogingen per IP)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `login_attempts` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `ip`         VARCHAR(45)  NOT NULL COMMENT 'IPv4 of IPv6 adres',
+    `action`     VARCHAR(30)  NOT NULL DEFAULT 'login',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_ip_action_time` (`ip`, `action`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
