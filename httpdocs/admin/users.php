@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = $_POST['post_action'] ?? '';
     $userId     = (int) ($_POST['user_id'] ?? 0);
 
-    // Gebruiker verwijderen
-    if ($postAction === 'delete_user' && $userId > 0) {
+    // Gebruiker definitief verwijderen (na bevestigingsstap)
+    if ($postAction === 'delete_user_confirmed' && $userId > 0) {
         $me = currentUser();
         if ($userId === (int) $me['id']) {
             $error = 'Je kunt je eigen account niet verwijderen.';
@@ -33,11 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 db()->prepare('DELETE FROM users WHERE id = ?')->execute([$userId]);
                 $message = 'Gebruiker "' . htmlspecialchars($target['name'], ENT_QUOTES, 'UTF-8')
                     . '" (' . htmlspecialchars($target['email'], ENT_QUOTES, 'UTF-8') . ') is verwijderd.';
-                // Sluit detail-panel als die open stond voor deze user
-                if (isset($_GET['user']) && (int) $_GET['user'] === $userId) {
-                    header('Location: ' . BASE_URL . '/admin/users.php?deleted=1');
-                    exit;
-                }
+                header('Location: ' . BASE_URL . '/admin/users.php?deleted=1');
+                exit;
             }
         }
     }
@@ -77,6 +74,9 @@ $users = db()->query(
      GROUP BY u.id
      ORDER BY u.last_activity DESC, u.created_at DESC'
 )->fetchAll();
+
+// Verwijder-bevestiging: welke user staat in 'vraag-bevestiging'-modus?
+$confirmDeleteId = isset($_GET['delete']) ? (int) $_GET['delete'] : 0;
 
 // Detail-view: één gebruiker uitklappen
 $detailUserId = isset($_GET['user']) ? (int) $_GET['user'] : 0;
@@ -239,18 +239,43 @@ require_once __DIR__ . '/../includes/header.php';
                             <?= $u['is_admin'] ? '&#x2193; Admin' : '&#x2191; Admin' ?>
                         </button>
                     </form>
-                    <form method="post" style="display:inline"
-                          onsubmit="return confirmDelete(<?= (int) $u['id'] ?>, <?= json_encode($u['name']) ?>)">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="post_action" value="delete_user">
-                        <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
-                        <button type="submit" class="btn btn-sm"
-                                style="background:#c0392b;color:#fff;border-color:#c0392b"
-                                title="Gebruiker verwijderen">&#x2715; Verwijder</button>
-                    </form>
+                    <?php if ($confirmDeleteId === (int) $u['id']): ?>
+                        <!-- Bevestigingsknop zichtbaar als ?delete=ID in URL -->
+                        <a href="?" class="btn btn-sm btn-secondary" title="Annuleren">Annuleer</a>
+                    <?php else: ?>
+                        <a href="?delete=<?= (int) $u['id'] ?>"
+                           class="btn btn-sm"
+                           style="background:#c0392b;color:#fff;border-color:#c0392b"
+                           title="Gebruiker verwijderen">&#x2715; Verwijder</a>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </td>
             </tr>
+
+            <?php if ($confirmDeleteId === (int) $u['id']): ?>
+            <tr>
+                <td colspan="10" style="padding:0;">
+                    <div style="padding:1.25rem 1.5rem;background:#3d0f0f;border-top:2px solid #c0392b;">
+                        <strong style="color:#e74c3c;">&#9888; Gebruiker definitief verwijderen?</strong>
+                        <p style="margin:.5rem 0 1rem;font-size:.92rem;">
+                            Je staat op het punt om <strong><?= htmlspecialchars($u['name'], ENT_QUOTES, 'UTF-8') ?></strong>
+                            (<?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?>) te verwijderen.<br>
+                            Alle aankopen en event-toegangen worden ook verwijderd. Dit is <strong>onomkeerbaar</strong>.
+                        </p>
+                        <form method="post" style="display:inline">
+                            <?= csrfField() ?>
+                            <input type="hidden" name="post_action" value="delete_user_confirmed">
+                            <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                            <button type="submit" class="btn"
+                                    style="background:#c0392b;color:#fff;border-color:#c0392b;margin-right:.5rem">
+                                Ja, verwijder definitief
+                            </button>
+                        </form>
+                        <a href="?" class="btn btn-secondary">Annuleren</a>
+                    </div>
+                </td>
+            </tr>
+            <?php endif; ?>
 
             <?php if ($isDetail && $detail): ?>
             <tr>
@@ -354,22 +379,5 @@ require_once __DIR__ . '/../includes/header.php';
         </tbody>
     </table>
 </div>
-
-<script>
-function confirmDelete(userId, userName) {
-    // Eerste check
-    if (!confirm('Gebruiker "' + userName + '" verwijderen?\n\nAlle aankopen en event-toegangen worden ook verwijderd.')) {
-        return false;
-    }
-    // Tweede check
-    var typed = prompt('Typ de naam van de gebruiker om te bevestigen:');
-    if (typed === null) return false;
-    if (typed.trim() !== userName) {
-        alert('Naam komt niet overeen. Verwijdering geannuleerd.');
-        return false;
-    }
-    return true;
-}
-</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

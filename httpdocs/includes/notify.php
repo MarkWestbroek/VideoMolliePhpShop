@@ -19,7 +19,7 @@ function registrationSuspicionScore(string $name, string $email): int
     // --- Klinker-ratio naam ---
     $letters = preg_replace('/[^a-zA-Z]/', '', $name);
     $len     = strlen($letters);
-    if ($len >= 4) {
+    if ($len >= 6) {
         $vowels = preg_match_all('/[aeiouAEIOU]/', $letters);
         $ratio  = $vowels / $len;
         if ($ratio < 0.20)      $score += 3;
