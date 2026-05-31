@@ -20,6 +20,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postAction = $_POST['post_action'] ?? '';
     $userId     = (int) ($_POST['user_id'] ?? 0);
 
+    // Gebruiker verwijderen
+    if ($postAction === 'delete_user' && $userId > 0) {
+        $me = currentUser();
+        if ($userId === (int) $me['id']) {
+            $error = 'Je kunt je eigen account niet verwijderen.';
+        } else {
+            $stmt = db()->prepare('SELECT name, email FROM users WHERE id = ? LIMIT 1');
+            $stmt->execute([$userId]);
+            $target = $stmt->fetch();
+            if ($target) {
+                db()->prepare('DELETE FROM users WHERE id = ?')->execute([$userId]);
+                $message = 'Gebruiker "' . htmlspecialchars($target['name'], ENT_QUOTES, 'UTF-8')
+                    . '" (' . htmlspecialchars($target['email'], ENT_QUOTES, 'UTF-8') . ') is verwijderd.';
+                // Sluit detail-panel als die open stond voor deze user
+                if (isset($_GET['user']) && (int) $_GET['user'] === $userId) {
+                    header('Location: ' . BASE_URL . '/admin/users.php?deleted=1');
+                    exit;
+                }
+            }
+        }
+    }
+
     // Admin-status in-/uitschakelen (bescherm eigen account)
     if ($postAction === 'toggle_admin' && $userId > 0) {
         $me = currentUser();
@@ -217,6 +239,15 @@ require_once __DIR__ . '/../includes/header.php';
                             <?= $u['is_admin'] ? '&#x2193; Admin' : '&#x2191; Admin' ?>
                         </button>
                     </form>
+                    <form method="post" style="display:inline"
+                          onsubmit="return confirmDelete(<?= (int) $u['id'] ?>, <?= json_encode($u['name']) ?>)">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="post_action" value="delete_user">
+                        <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                        <button type="submit" class="btn btn-sm"
+                                style="background:#c0392b;color:#fff;border-color:#c0392b"
+                                title="Gebruiker verwijderen">&#x2715; Verwijder</button>
+                    </form>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -323,5 +354,22 @@ require_once __DIR__ . '/../includes/header.php';
         </tbody>
     </table>
 </div>
+
+<script>
+function confirmDelete(userId, userName) {
+    // Eerste check
+    if (!confirm('Gebruiker "' + userName + '" verwijderen?\n\nAlle aankopen en event-toegangen worden ook verwijderd.')) {
+        return false;
+    }
+    // Tweede check
+    var typed = prompt('Typ de naam van de gebruiker om te bevestigen:');
+    if (typed === null) return false;
+    if (typed.trim() !== userName) {
+        alert('Naam komt niet overeen. Verwijdering geannuleerd.');
+        return false;
+    }
+    return true;
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
