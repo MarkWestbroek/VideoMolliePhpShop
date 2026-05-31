@@ -135,14 +135,28 @@ require_once __DIR__ . '/../includes/header.php';
             <?php endif; ?>
 
             <div class="video-card__footer">
-                <span class="video-card__price">&euro; <?= number_format($toonPrijs, 2, ',', '.') ?></span>
+                <span class="video-card__price"
+                    <?php if ($sid > 0 && !$isPaid): ?>
+                        title="Staffelkorting: hoe meer video's uit deze serie je koopt, hoe lager de prijs per video."
+                    <?php elseif ($isPaid): ?>
+                        title="Jouw aankoopbedrag"
+                    <?php endif; ?>>
+                    &euro; <?= number_format($toonPrijs, 2, ',', '.') ?>
+                    <?php if ($sid > 0 && !$isPaid): ?>
+                        <span style="font-size:.75rem;color:var(--text-muted);cursor:help;" title="Staffelkorting: hoe meer video's uit deze serie je koopt, hoe lager de prijs.">&#9432;</span>
+                    <?php endif; ?>
+                </span>
 
                 <?php if ($isPaid): ?>
-                    <a href="<?= BASE_URL ?>/members/watch.php?id=<?= $vid ?>" class="btn btn-success btn-sm">
+                    <a href="<?= BASE_URL ?>/members/watch.php?id=<?= $vid ?>" class="btn btn-success btn-sm"
+                       title="Je hebt deze video gekocht — klik om te bekijken">
                         &#9654; Bekijk
                     </a>
                 <?php elseif ($isPending): ?>
-                    <span class="badge-pending">Betaling in behandeling</span>
+                    <span class="badge-pending"
+                          title="Je betaling wordt verwerkt. Dit duurt meestal minder dan een minuut. Ververs de pagina om de status te zien.">
+                        Betaling in behandeling
+                    </span>
                 <?php else: ?>
                     <form method="post" action="<?= BASE_URL ?>/payment/checkout.php">
                         <input type="hidden" name="video_id" value="<?= $vid ?>">
@@ -150,7 +164,8 @@ require_once __DIR__ . '/../includes/header.php';
                             require_once __DIR__ . '/../includes/csrf.php';
                             echo htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8');
                         ?>">
-                        <button type="submit" class="btn btn-primary btn-sm">
+                        <button type="submit" class="btn btn-primary btn-sm"
+                                title="Veilig betalen via Mollie (iDEAL, creditcard e.d.). Na betaling kun je de video direct bekijken.">
                             Koop toegang
                         </button>
                     </form>

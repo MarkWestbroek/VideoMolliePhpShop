@@ -11,10 +11,12 @@ $pageTitle = 'Handleiding — HB Foto & Video';
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<!-- Navigatie tabs (zelfde patroon als de andere admin-pagina's) -->
+<!-- Navigatie tabs (identiek aan admin/index.php) -->
 <nav style="display:flex;gap:.75rem;margin-bottom:1.75rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;flex-wrap:wrap;">
     <a href="<?= BASE_URL ?>/admin/"            class="btn btn-sm btn-secondary">Video's</a>
-    <a href="<?= BASE_URL ?>/admin/users.php"    class="btn btn-sm btn-secondary">Gebruikers</a>
+    <a href="<?= BASE_URL ?>/admin/?action=purchases" class="btn btn-sm btn-secondary">Verkopen</a>
+    <a href="<?= BASE_URL ?>/admin/?action=add_video" class="btn btn-sm btn-secondary">+ Video toevoegen</a>
+    <a href="<?= BASE_URL ?>/admin/users.php"    class="btn btn-sm btn-secondary">&#9654; Gebruikers</a>
     <a href="<?= BASE_URL ?>/admin/staffels.php" class="btn btn-sm btn-secondary">&#9654; Staffels</a>
     <a href="<?= BASE_URL ?>/admin/events.php"   class="btn btn-sm btn-secondary">&#9654; Events</a>
     <a href="<?= BASE_URL ?>/admin/help.php"     class="btn btn-sm btn-primary">&#9432; Handleiding</a>

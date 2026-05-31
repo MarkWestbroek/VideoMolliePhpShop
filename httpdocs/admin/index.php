@@ -158,8 +158,8 @@ if ($action === 'dashboard'): ?>
             <tr>
                 <th>ID</th>
                 <th>Titel</th>
-                <th>Prijs / Staffel</th>
-                <th>Event</th>
+                <th title="Vaste prijs of staffel (trapsgewijze korting)">Prijs / Staffel</th>
+                <th title="Besloten event: video is alleen zichtbaar voor gebruikers met de toegangscode">Event</th>
                 <th>Bestand</th>
                 <th>Status</th>
                 <th>Acties</th>
@@ -172,7 +172,7 @@ if ($action === 'dashboard'): ?>
                 <td><?= htmlspecialchars($v['title'], ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
                     <?php if ($v['staffel_naam']): ?>
-                        <span title="Vaste terugvalprijs: &euro; <?= number_format((float)$v['price'], 2, ',', '.') ?>">
+                        <span title="Trapsgewijze prijs — vaste terugvalprijs: &euro; <?= number_format((float)$v['price'], 2, ',', '.') ?>. Beheer via Staffels.">
                             &#9654; <?= htmlspecialchars($v['staffel_naam'], ENT_QUOTES, 'UTF-8') ?>
                         </span>
                     <?php else: ?>
@@ -181,9 +181,9 @@ if ($action === 'dashboard'): ?>
                 </td>
                 <td>
                     <?php if ($v['event_naam']): ?>
-                        <span class="status-paid">&#128274; <?= htmlspecialchars($v['event_naam'], ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="status-paid" title="Besloten: alleen zichtbaar na invoer van de toegangscode van dit event">&#128274; <?= htmlspecialchars($v['event_naam'], ENT_QUOTES, 'UTF-8') ?></span>
                     <?php else: ?>
-                        <span class="text-muted">Openbaar</span>
+                        <span class="text-muted" title="Zichtbaar voor alle ingelogde gebruikers">Openbaar</span>
                     <?php endif; ?>
                 </td>
                 <td><code style="font-size:.8rem"><?= htmlspecialchars($v['filename'], ENT_QUOTES, 'UTF-8') ?></code></td>
