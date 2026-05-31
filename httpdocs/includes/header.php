@@ -22,8 +22,10 @@ $_currentUser = currentUser();
             <?php if ($_currentUser): ?>
                 <a href="<?= BASE_URL ?>/members/">Mijn video&rsquo;s</a>
                 <a href="<?= BASE_URL ?>/members/account.php">Mijn account</a>
+                <a href="<?= BASE_URL ?>/members/help.php">Help</a>
                 <?php if ($_currentUser['is_admin']): ?>
                     <a href="<?= BASE_URL ?>/admin/">Beheer</a>
+                    <a href="<?= BASE_URL ?>/admin/help.php">Handleiding</a>
                 <?php endif; ?>
                 <a href="<?= BASE_URL ?>/logout.php" class="btn-nav">
                     Uitloggen

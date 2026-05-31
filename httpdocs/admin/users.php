@@ -136,6 +136,7 @@ require_once __DIR__ . '/../includes/header.php';
     <a href="<?= BASE_URL ?>/admin/users.php"        class="btn btn-sm btn-primary">Gebruikers</a>
     <a href="<?= BASE_URL ?>/admin/staffels.php"     class="btn btn-sm btn-secondary">&#9654; Staffels</a>
     <a href="<?= BASE_URL ?>/admin/events.php"       class="btn btn-sm btn-secondary">&#9654; Events</a>
+    <a href="<?= BASE_URL ?>/admin/help.php"         class="btn btn-sm btn-secondary">&#9432; Handleiding</a>
 </nav>
 
 <div class="page-header">
