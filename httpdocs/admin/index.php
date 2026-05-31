@@ -24,16 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = trim($_POST['description'] ?? '');
         $price       = $_POST['price']    ?? '';
         $filename    = trim($_POST['filename']    ?? '');
-        $staffelId   = ($_POST['staffel_id'] ?? '') !== '' ? (int) $_POST['staffel_id'] : null;
+        $isGratis    = isset($_POST['gratis']);
+        $staffelId   = (!$isGratis && ($_POST['staffel_id'] ?? '') !== '') ? (int) $_POST['staffel_id'] : null;
         $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
         if ($title === '' || $filename === '') {
             $error = 'Vul alle verplichte velden in.';
-        } elseif ($staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
-            $error = 'Voer een geldige prijs in (minimaal € 0,01) of kies een staffel.';
+        } elseif (!$isGratis && $staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
+            $error = 'Voer een geldige prijs in (minimaal € 0,01), kies een staffel, of vink "Gratis" aan.';
         } else {
-            $safeFilename = basename($filename);
-            $fallbackPrice = ($price !== '' && is_numeric($price)) ? (float) $price : 0.01;
+            $safeFilename  = basename($filename);
+            $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
                 'INSERT INTO videos (title, description, price, staffel_id, event_id, filename) VALUES (?,?,?,?,?,?)'
             );
