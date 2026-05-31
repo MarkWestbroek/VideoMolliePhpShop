@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/events.php';
+require_once __DIR__ . '/includes/notify.php';
 
 if (isLoggedIn()) {
     header('Location: ' . BASE_URL . '/members/');
@@ -49,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $stmt->execute([$email, $hash, $name]);
             $newUserId = (int) db()->lastInsertId();
+
+            // Admin-notificatie (verdachte registraties worden gemarkeerd)
+            notifyAdminsNewUser($newUserId, $name, $email);
 
             $extra = '';
             if ($eventCode !== '') {
