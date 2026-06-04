@@ -5,9 +5,9 @@
 
 // --- Database (zie Plesk > Verbindingsinformatie) ------------
 define('DB_HOST',    'localhost');
-define('DB_NAME',    'msss_videos');       // bijv. f_00086643_videos
-define('DB_USER',    'video_admin');  // bijv. f_00086643
-define('DB_PASS',    'V1de0AdminAmber');
+define('DB_NAME',    'msss_videos');       // hb: h_00086643_videos
+define('DB_USER',    'video_admin');  // hb: h_00086643_video_admin
+define('DB_PASS',    'V1de0AdminAmber'); // hb: idem
 define('DB_CHARSET', 'utf8mb4');
 
 // --- Mollie -------------------------------------------------

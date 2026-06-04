@@ -71,6 +71,125 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action  = 'dashboard';
         }
     }
+
+    // --- Video verwijderen -----------------------------------
+    elseif ($action === 'delete_video') {
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $error = 'Ongeldig videonummer.';
+        } else {
+            // Controleren of er al aankopen zijn
+            $stmt = db()->prepare('SELECT COUNT(*) FROM purchases WHERE video_id = ?');
+            $stmt->execute([$id]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                $error = 'Deze video is al een keer gekocht en kan niet verwijderd worden.';
+            } else {
+                $stmt = db()->prepare('DELETE FROM videos WHERE id = ?');
+                $stmt->execute([$id]);
+                $message = 'Video verwijderd.';
+            }
+            $action = 'dashboard';
+        }
+    }
+
+    // --- Betaling verversen via Mollie API ------------------
+    elseif ($action === 'refresh_payment') {
+        $purchaseId = (int) ($_POST['purchase_id'] ?? 0);
+        if ($purchaseId <= 0) {
+            $error = 'Ongeldig aankoopnummer.';
+        } else {
+            $stmt = db()->prepare('SELECT id, mollie_payment_id, status FROM purchases WHERE id = ? LIMIT 1');
+            $stmt->execute([$purchaseId]);
+            $purchase = $stmt->fetch();
+
+            if (!$purchase || !$purchase['mollie_payment_id']) {
+                $error = 'Geen Mollie-betaling gevonden voor deze aankoop.';
+            } elseif (!in_array($purchase['status'], ['open', 'pending'], true)) {
+                $error = 'Status is al definitief (' . htmlspecialchars($purchase['status'], ENT_QUOTES, 'UTF-8') . ').';
+            } else {
+                try {
+                    require_once __DIR__ . '/../vendor/autoload.php';
+                    $mollie = new \Mollie\Api\MollieApiClient();
+                    $mollie->setApiKey(MOLLIE_API_KEY);
+                    $payment = $mollie->payments->get($purchase['mollie_payment_id']);
+
+                    $newStatus = 'open';
+                    if ($payment->isPaid())      { $newStatus = 'paid'; }
+                    elseif ($payment->isExpired())  { $newStatus = 'expired'; }
+                    elseif ($payment->isFailed())   { $newStatus = 'failed'; }
+                    elseif ($payment->isCanceled()) { $newStatus = 'canceled'; }
+                    elseif ($payment->isPending())  { $newStatus = 'pending'; }
+
+                    if ($newStatus === 'paid') {
+                        $stmt = db()->prepare(
+                            "UPDATE purchases SET status = 'paid', paid_at = NOW() WHERE id = ? AND status != 'paid'"
+                        );
+                    } else {
+                        $stmt = db()->prepare('UPDATE purchases SET status = ? WHERE id = ?');
+                    }
+                    $stmt->execute([$newStatus, $purchaseId]);
+                    $message = 'Betaling bijgewerkt naar: ' . $newStatus;
+                } catch (\Mollie\Api\Exceptions\ApiException $e) {
+                    $error = 'Mollie API-fout: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+                }
+            }
+            $action = 'purchases';
+        }
+    }
+
+    // --- Betaling annuleren bij Mollie ----------------------
+    elseif ($action === 'cancel_payment') {
+        $purchaseId = (int) ($_POST['purchase_id'] ?? 0);
+        if ($purchaseId <= 0) {
+            $error = 'Ongeldig aankoopnummer.';
+        } else {
+            $stmt = db()->prepare('SELECT id, mollie_payment_id, status FROM purchases WHERE id = ? LIMIT 1');
+            $stmt->execute([$purchaseId]);
+            $purchase = $stmt->fetch();
+
+            if (!$purchase || !$purchase['mollie_payment_id']) {
+                $error = 'Geen Mollie-betaling gevonden voor deze aankoop.';
+            } elseif (!in_array($purchase['status'], ['open', 'pending'], true)) {
+                $error = 'Deze betaling kan niet meer geannuleerd worden (status: ' . htmlspecialchars($purchase['status'], ENT_QUOTES, 'UTF-8') . ').';
+            } else {
+                try {
+                    require_once __DIR__ . '/../vendor/autoload.php';
+                    $mollie = new \Mollie\Api\MollieApiClient();
+                    $mollie->setApiKey(MOLLIE_API_KEY);
+                    $mollie->payments->cancel($purchase['mollie_payment_id']);
+
+                    $stmt = db()->prepare("UPDATE purchases SET status = 'canceled' WHERE id = ?");
+                    $stmt->execute([$purchaseId]);
+                    $message = 'Betaling geannuleerd bij Mollie.';
+                } catch (\Mollie\Api\Exceptions\ApiException $e) {
+                    // Cancel niet mogelijk (bv. betaling al verlopen/afgerond).
+                    // Probeer dan de actuele status op te halen.
+                    try {
+                        $payment = $mollie->payments->get($purchase['mollie_payment_id']);
+                        $newStatus = 'open';
+                        if ($payment->isPaid())      { $newStatus = 'paid'; }
+                        elseif ($payment->isExpired())  { $newStatus = 'expired'; }
+                        elseif ($payment->isFailed())   { $newStatus = 'failed'; }
+                        elseif ($payment->isCanceled()) { $newStatus = 'canceled'; }
+                        elseif ($payment->isPending())  { $newStatus = 'pending'; }
+
+                        if ($newStatus === 'paid') {
+                            $stmt = db()->prepare(
+                                "UPDATE purchases SET status = 'paid', paid_at = NOW() WHERE id = ? AND status != 'paid'"
+                            );
+                        } else {
+                            $stmt = db()->prepare('UPDATE purchases SET status = ? WHERE id = ?');
+                        }
+                        $stmt->execute([$newStatus, $purchaseId]);
+                        $message = 'Annuleren niet mogelijk, status opgehaald bij Mollie: ' . $newStatus;
+                    } catch (\Mollie\Api\Exceptions\ApiException $e2) {
+                        $error = 'Kon status niet ophalen bij Mollie: ' . htmlspecialchars($e2->getMessage(), ENT_QUOTES, 'UTF-8');
+                    }
+                }
+            }
+            $action = 'purchases';
+        }
+    }
 }
 
 // ============================================================
@@ -109,7 +228,8 @@ if ($action === 'dashboard') {
 if ($action === 'purchases') {
     $purchases = db()->query(
         'SELECT p.id, u.name AS user_name, u.email, v.title AS video_title,
-                p.amount, p.status, p.created_at, p.paid_at
+                p.amount, p.status, p.created_at, p.paid_at,
+                p.mollie_payment_id
          FROM purchases p
          JOIN users  u ON u.id = p.user_id
          JOIN videos v ON v.id = p.video_id
@@ -200,6 +320,12 @@ if ($action === 'dashboard'): ?>
                 </td>
                 <td class="actions">
                     <a href="?action=edit_video&id=<?= (int) $v['id'] ?>" class="btn btn-secondary btn-sm">Bewerken</a>
+                    <form method="post" action="?action=delete_video" style="display:inline"
+                          onsubmit="return confirm('Weet je zeker dat je deze video wilt verwijderen?');">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="id" value="<?= (int) $v['id'] ?>">
+                        <button type="submit" class="btn btn-danger btn-sm">Verwijderen</button>
+                    </form>
                 </td>
             </tr>
         <?php endforeach; ?>
@@ -448,6 +574,8 @@ elseif ($action === 'purchases'): ?>
                 <th>Bedrag</th>
                 <th>Status</th>
                 <th>Betaald op</th>
+                <th>Mollie</th>
+                <th>Acties</th>
             </tr>
         </thead>
         <tbody>
@@ -465,6 +593,26 @@ elseif ($action === 'purchases'): ?>
                 </span></td>
                 <td style="white-space:nowrap">
                     <?= $p['paid_at'] ? htmlspecialchars(substr($p['paid_at'], 0, 16), ENT_QUOTES, 'UTF-8') : '—' ?>
+                </td>
+                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;">
+                    <?= $p['mollie_payment_id'] ? htmlspecialchars($p['mollie_payment_id'], ENT_QUOTES, 'UTF-8') : '—' ?>
+                </td>
+                <td style="white-space:nowrap">
+                    <?php if ($p['mollie_payment_id'] && in_array($p['status'], ['open', 'pending'], true)): ?>
+                        <form method="post" action="?action=refresh_payment" style="display:inline">
+                            <?= csrfField() ?>
+                            <input type="hidden" name="purchase_id" value="<?= (int) $p['id'] ?>">
+                            <button type="submit" class="btn btn-secondary btn-sm" title="Status opvragen bij Mollie">Ververs</button>
+                        </form>
+                        <form method="post" action="?action=cancel_payment" style="display:inline"
+                              onsubmit="return confirm('Betaling annuleren bij Mollie?');">
+                            <?= csrfField() ?>
+                            <input type="hidden" name="purchase_id" value="<?= (int) $p['id'] ?>">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Annuleer deze betaling bij Mollie">Annuleer</button>
+                        </form>
+                    <?php else: ?>
+                        <span class="text-muted" style="font-size:.8rem">—</span>
+                    <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach; ?>
