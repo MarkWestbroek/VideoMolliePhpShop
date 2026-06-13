@@ -1,6 +1,8 @@
 <?php
 // ============================================================
 // CONFIGURATIE — vul deze waarden in vóór het deployen
+// --- NB: instellingen voor video.msss.nl                  ---
+// --- met test-Mollie-sleutel, niet voor productie!        ---
 // ============================================================
 
 // --- Database (zie Plesk > Verbindingsinformatie) ------------
@@ -23,12 +25,21 @@ define('BASE_URL', 'https://video.msss.nl');
 define('VIDEO_PATH', '/var/www/vhosts/msss.nl/video.msss.nl/private/videos');
 
 // --- SMTP configuratie voor e-mail --------------------------
+/* HANS
 define('SMTP_HOST',     'smtp.mijndomein.nl');
 define('SMTP_PORT',     587);  // 587 voor TLS, 465 voor SSL
 define('SMTP_USERNAME', 'noreply@hbfoto.nl');  // ← het e-mailaccount dat je gebruikt voor SMTP
 define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van noreply@hbfoto.nl
 define('SMTP_FROM_EMAIL', 'noreply@hbfoto.nl');
 define('SMTP_FROM_NAME', 'HB Foto & Video');
+*/
+
+define('SMTP_HOST',     'smtp.msss.nl');
+define('SMTP_PORT',     587);  // 587 voor TLS, 465 voor SSL
+define('SMTP_USERNAME', 'noreply@msss.nl');  // ← het e-mailaccount dat je gebruikt voor SMTP
+define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van noreply@msss.nl
+define('SMTP_FROM_EMAIL', 'noreply@msss.nl');
+define('SMTP_FROM_NAME', 'MW Foto & Video');
 
 // ============================================================
 // Sessie-instellingen (niet aanpassen)
