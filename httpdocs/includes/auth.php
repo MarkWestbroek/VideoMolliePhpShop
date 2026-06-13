@@ -36,10 +36,18 @@ function currentUser(): ?array
     static $user = null;
 
     if ($user === null) {
-        $stmt = db()->prepare(
-            'SELECT id, email, name, is_admin, email_verified_at FROM users WHERE id = ? LIMIT 1'
-        );
-        $stmt->execute([$_SESSION['user_id']]);
+        try {
+            $stmt = db()->prepare(
+                'SELECT id, email, name, is_admin, email_verified_at FROM users WHERE id = ? LIMIT 1'
+            );
+            $stmt->execute([$_SESSION['user_id']]);
+        } catch (\PDOException $e) {
+            // Kolom email_verified_at bestaat nog niet (vóór migratie) — val terug
+            $stmt = db()->prepare(
+                'SELECT id, email, name, is_admin, NULL AS email_verified_at FROM users WHERE id = ? LIMIT 1'
+            );
+            $stmt->execute([$_SESSION['user_id']]);
+        }
         $row  = $stmt->fetch();
         $user = $row ?: null;
 
