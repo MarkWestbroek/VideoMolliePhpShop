@@ -22,19 +22,19 @@ use PHPMailer\PHPMailer\Exception;
  * @param string $fromName Afzender naam (optioneel, gebruikt SMTP_FROM_NAME)
  * @return bool True bij succes, false bij fout
  */
-function sendMail(string $to, string $subject, string $body, string $fromName = ''): bool
+function sendMail(string $to, string $subject, string $body, string $fromName = '', bool $useFallback = true): bool
 {
     $mail = new PHPMailer(true);
 
     try {
         // Als SMTP niet is ingesteld, val direct terug op PHP mail()
         if (!defined('SMTP_HOST') || !defined('SMTP_USERNAME') || !defined('SMTP_PASSWORD') || SMTP_USERNAME === '' || SMTP_PASSWORD === '') {
-            return fallbackMail($to, $subject, $body, $fromName);
+            return $useFallback ? fallbackMail($to, $subject, $body, $fromName) : false;
         }
 
         if (!smtpIsReachable()) {
-            error_log('SMTP pre-check: host niet bereikbaar, fallback naar mail()');
-            return fallbackMail($to, $subject, $body, $fromName);
+            error_log('SMTP pre-check: host niet bereikbaar');
+            return $useFallback ? fallbackMail($to, $subject, $body, $fromName) : false;
         }
 
         // SMTP configuratie
@@ -80,7 +80,7 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
     } catch (Exception $e) {
         error_log("PHPMailer fout: {$mail->ErrorInfo}");
         error_log("PHPMailer exception: " . $e->getMessage());
-        return fallbackMail($to, $subject, $body, $fromName);
+        return $useFallback ? fallbackMail($to, $subject, $body, $fromName) : false;
     }
 }
 

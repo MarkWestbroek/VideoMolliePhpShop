@@ -46,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // --- Test via PHPMailer SMTP ---
-            $sent = sendMail($testEmail, $subject, $body);
+            $sent = sendMail($testEmail, $subject, $body, '', false);
             
             if ($sent) {
                 $result = ['success' => true, 'methode' => 'PHPMailer SMTP'];
             } else {
-                $result = ['success' => false, 'error' => 'PHPMailer fout — check error log'];
+                $result = ['success' => false, 'error' => 'PHPMailer SMTP faalt — er is geen fallback uitgevoerd. Controleer de SMTP-configuratie of logs.'];
             }
         }
     }
