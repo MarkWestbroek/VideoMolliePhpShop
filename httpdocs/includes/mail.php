@@ -32,6 +32,11 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
             return fallbackMail($to, $subject, $body, $fromName);
         }
 
+        if (!smtpIsReachable()) {
+            error_log('SMTP pre-check: host niet bereikbaar, fallback naar mail()');
+            return fallbackMail($to, $subject, $body, $fromName);
+        }
+
         // SMTP configuratie
         $mail->isSMTP();
         $mail->Host       = SMTP_HOST;
@@ -77,6 +82,26 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
         error_log("PHPMailer exception: " . $e->getMessage());
         return fallbackMail($to, $subject, $body, $fromName);
     }
+}
+
+function smtpIsReachable(): bool
+{
+    $host = SMTP_HOST;
+    $port = SMTP_PORT;
+    $timeout = 2;
+
+    if ($port === 465) {
+        $host = 'ssl://' . $host;
+    }
+
+    $connection = @fsockopen($host, $port, $errno, $errstr, $timeout);
+    if ($connection) {
+        fclose($connection);
+        return true;
+    }
+
+    error_log("SMTP preconnect fout: {$errno} - {$errstr}");
+    return false;
 }
 
 function fallbackMail(string $to, string $subject, string $body, string $fromName = ''): bool

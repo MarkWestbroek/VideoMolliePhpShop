@@ -41,6 +41,12 @@ define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van de SMTP @mss
 define('SMTP_FROM_EMAIL', 'noreply@msss.nl');
 define('SMTP_FROM_NAME', 'MW Foto & Video');
 
+// Lokale override voor wachtwoorden / staging-specifieke instellingen.
+// Maak een httpdocs/includes/config.local.php aan en voeg die toe aan .gitignore.
+if (file_exists(__DIR__ . '/config.local.php')) {
+    require_once __DIR__ . '/config.local.php';
+}
+
 // ============================================================
 // Sessie-instellingen (niet aanpassen)
 // ============================================================

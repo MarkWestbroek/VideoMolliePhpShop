@@ -17,4 +17,5 @@ desktop.ini
 error_log
 
 # Eventuele lokale testconfiguratie (maak een config.local.php voor lokaal)
+httpdocs/includes/config.local.php
 # config.php bevat ALLEEN placeholders, dus is veilig om te committen
