@@ -27,18 +27,29 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
     $mail = new PHPMailer(true);
 
     try {
+        // Als SMTP niet is ingesteld, val direct terug op PHP mail()
+        if (!defined('SMTP_HOST') || !defined('SMTP_USERNAME') || !defined('SMTP_PASSWORD') || SMTP_USERNAME === '' || SMTP_PASSWORD === '') {
+            return fallbackMail($to, $subject, $body, $fromName);
+        }
+
         // SMTP configuratie
         $mail->isSMTP();
         $mail->Host       = SMTP_HOST;
         $mail->SMTPAuth   = true;
         $mail->Username   = SMTP_USERNAME;
         $mail->Password   = SMTP_PASSWORD;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = SMTP_PORT;
-        $mail->Timeout    = 10;
+        $mail->Timeout    = 5;
         $mail->CharSet    = 'UTF-8';
         $mail->SMTPKeepAlive = false;
         $mail->SMTPAutoTLS  = true;
+        $mail->SMTPDebug    = SMTP::DEBUG_OFF;
+
+        if (SMTP_PORT === 465) {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } else {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        }
 
         // Afzender en ontvanger
         $mail->setFrom(SMTP_FROM_EMAIL, $fromName ?: SMTP_FROM_NAME);
@@ -49,6 +60,13 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
         $mail->isHTML(false); // Platte tekst
         $mail->Subject = $subject;
         $mail->Body    = $body;
+
+        // Socket timeout
+        $mail->SMTPOptions = [
+            'socket' => [
+                'timeout' => 5,
+            ],
+        ];
 
         // Verstuur
         $mail->send();
