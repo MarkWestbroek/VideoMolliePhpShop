@@ -22,6 +22,14 @@ define('BASE_URL', 'https://video.msss.nl');
 // Absolute pad naar de private/videos map buiten de web root
 define('VIDEO_PATH', '/var/www/vhosts/msss.nl/video.msss.nl/private/videos');
 
+// --- SMTP configuratie voor e-mail --------------------------
+define('SMTP_HOST',     'smtp.mijndomein.nl');
+define('SMTP_PORT',     587);  // 587 voor TLS, 465 voor SSL
+define('SMTP_USERNAME', 'noreply@hbfoto.nl');  // ← het e-mailaccount dat je gebruikt voor SMTP
+define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van noreply@hbfoto.nl
+define('SMTP_FROM_EMAIL', 'noreply@hbfoto.nl');
+define('SMTP_FROM_NAME', 'HB Foto & Video');
+
 // ============================================================
 // Sessie-instellingen (niet aanpassen)
 // ============================================================

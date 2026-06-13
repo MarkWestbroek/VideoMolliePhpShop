@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/events.php';
 require_once __DIR__ . '/includes/notify.php';
+require_once __DIR__ . '/includes/mail.php';
 
 if (isLoggedIn()) {
     header('Location: ' . BASE_URL . '/members/');
@@ -51,6 +52,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$email, $hash, $name]);
             $newUserId = (int) db()->lastInsertId();
 
+            // Genereer verificatietoken en stuur e-mail
+            $rawToken    = bin2hex(random_bytes(32));
+            $tokenHash   = hash('sha256', $rawToken);
+            db()->prepare('UPDATE users SET verification_token = ? WHERE id = ?')
+                ->execute([$tokenHash, $newUserId]);
+
+            $verifyLink  = BASE_URL . '/verify.php?token=' . urlencode($rawToken);
+            $mailSubject = 'Bevestig je e-mailadres — HB Foto & Video';
+            $mailBody    = "Hallo {$name},\r\n\r\n"
+                . "Welkom bij HB Foto & Video!\r\n\r\n"
+                . "Klik op de onderstaande link om je e-mailadres te bevestigen:\r\n"
+                . "{$verifyLink}\r\n\r\n"
+                . "Deze link is 24 uur geldig.\r\n\r\n"
+                . "Als je geen account hebt aangemaakt, kun je deze e-mail negeren.\r\n\r\n"
+                . "Met vriendelijke groet,\r\nHB Foto & Video";
+
+            sendMail($email, $mailSubject, $mailBody);
+
             // Admin-notificatie (verdachte registraties worden gemarkeerd)
             notifyAdminsNewUser($newUserId, $name, $email);
 
@@ -63,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         . ' Je kunt de code later toevoegen op je accountpagina.';
             }
 
-            $success = 'Account aangemaakt! Je kunt nu <a href="' . BASE_URL . '/login.php">inloggen</a>.' . $extra;
+            $success = 'Account aangemaakt! <strong>Check je e-mail</strong> om je adres te bevestigen (check ook je spambox).'
+                . ' Na bevestiging kun je <a href="' . BASE_URL . '/login.php">inloggen</a>.' . $extra;
         }
     }
 }

@@ -39,3 +39,9 @@ $_currentUser = currentUser();
     </div>
 </header>
 <main class="container">
+<?php if ($_currentUser && $_currentUser['email_verified_at'] === null): ?>
+    <div class="alert alert-warning" style="margin-top:1rem;">
+        &#9888; Je e-mailadres is nog niet bevestigd.
+        <a href="<?= BASE_URL ?>/verify.php?resend=1" style="color:inherit;font-weight:600;text-decoration:underline;">Verificatie-e-mail opnieuw versturen</a>
+    </div>
+<?php endif; ?>

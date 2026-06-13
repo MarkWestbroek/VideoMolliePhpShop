@@ -37,7 +37,7 @@ function currentUser(): ?array
 
     if ($user === null) {
         $stmt = db()->prepare(
-            'SELECT id, email, name, is_admin FROM users WHERE id = ? LIMIT 1'
+            'SELECT id, email, name, is_admin, email_verified_at FROM users WHERE id = ? LIMIT 1'
         );
         $stmt->execute([$_SESSION['user_id']]);
         $row  = $stmt->fetch();
@@ -76,4 +76,13 @@ function loginUser(array $user): void
     session_regenerate_id(true);
     $_SESSION['user_id']  = (int) $user['id'];
     $_SESSION['is_admin'] = (bool) $user['is_admin'];
+}
+
+/**
+ * Controleer of de huidige gebruiker zijn e-mail heeft geverifieerd.
+ */
+function isEmailVerified(): bool
+{
+    $user = currentUser();
+    return $user !== null && $user['email_verified_at'] !== null;
 }

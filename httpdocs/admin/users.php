@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Alle gebruikers + event-toegangen + aankopen als sub-query tellers
 // "Online" = last_activity binnen de laatste 15 minuten
 $users = db()->query(
-    'SELECT u.id, u.email, u.name, u.is_admin, u.created_at, u.last_activity,
+    'SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = \'paid\' THEN p.amount ELSE 0 END) AS total_paid
@@ -85,7 +85,7 @@ $detailEvents = [];
 $detailPurchases = [];
 
 if ($detailUserId > 0) {
-    $stmt = db()->prepare('SELECT id, email, name, is_admin, created_at FROM users WHERE id = ? LIMIT 1');
+    $stmt = db()->prepare('SELECT id, email, name, is_admin, email_verified_at, created_at FROM users WHERE id = ? LIMIT 1');
     $stmt->execute([$detailUserId]);
     $detail = $stmt->fetch();
 
@@ -155,6 +155,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <th>E-mail</th>
                 <th>Geregistreerd</th>
                 <th title="Actief binnen de laatste 15 minuten">Online</th>
+                <th>E-mail</th>
                 <th>Events</th>
                 <th>Aankopen</th>
                 <th>Betaald</th>
@@ -195,6 +196,13 @@ require_once __DIR__ . '/../includes/header.php';
                         </span>
                     <?php else: ?>
                         <span class="text-muted">—</span>
+                    <?php endif; ?>
+                </td>
+                <td style="text-align:center">
+                    <?php if ($u['email_verified_at']): ?>
+                        <span class="status-paid" title="Geverifieerd op <?= date('d-m-Y H:i', strtotime($u['email_verified_at'])) ?>">&#10003;</span>
+                    <?php else: ?>
+                        <span class="text-muted" style="color:#e67e22">&#9888; niet</span>
                     <?php endif; ?>
                 </td>
                 <td style="text-align:center">
@@ -255,7 +263,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <?php if ($confirmDeleteId === (int) $u['id']): ?>
             <tr>
-                <td colspan="10" style="padding:0;">
+                <td colspan="11" style="padding:0;">
                     <div style="padding:1.25rem 1.5rem;background:#3d0f0f;border-top:2px solid #c0392b;">
                         <strong style="color:#e74c3c;">&#9888; Gebruiker definitief verwijderen?</strong>
                         <p style="margin:.5rem 0 1rem;font-size:.92rem;">
@@ -280,7 +288,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <?php if ($isDetail && $detail): ?>
             <tr>
-                <td colspan="9" style="padding:0;">
+                <td colspan="10" style="padding:0;">
                     <div style="padding:1.25rem 1.5rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);">
 
                         <h3 style="margin:0 0 1rem">

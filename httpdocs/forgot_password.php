@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/ratelimit.php';
+require_once __DIR__ . '/includes/mail.php';
 
 if (isLoggedIn()) {
     header('Location: ' . BASE_URL . '/members/');
@@ -57,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 . "Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.\r\n\r\n"
                 . "Met vriendelijke groet,\r\nHB Foto & Video";
 
-            $domain  = parse_url(BASE_URL, PHP_URL_HOST) ?? 'hbfoto.nl';
+            $domain  = 'hbfoto.nl';
             $headers = implode("\r\n", [
                 'From: HB Foto & Video <noreply@' . $domain . '>',
                 'Reply-To: noreply@' . $domain,
@@ -65,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'X-Mailer: PHP/' . PHP_VERSION,
             ]);
 
-            mail($email, $subject, $body, $headers);
+            sendMail($email, $subject, $body);
         }
 
         // Altijd dezelfde melding tonen

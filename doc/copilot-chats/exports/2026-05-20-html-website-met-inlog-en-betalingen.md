@@ -2,7 +2,7 @@
 
 - **Datum**: 2026-05-20 22:28
 - **Sessie-ID**: `24398d1e-49e5-4820-a77d-9a6318dca082`
-- **Berichten**: 122
+- **Berichten**: 136
 
 ---
 
@@ -2574,5 +2574,248 @@ gratis aankruisen wil nog steeds een prijs of staffel
 
 De `add_video` PHP-blok mist nog de `$isGratis`-logica — die is alleen bij `edit_video` toegepast eerder. 
 Klaar. De server-side validatie voor `add_video` miste de `$isGratis`-check — die was eerder alleen bij `edit_video` ingevoegd. Nu slaat "Gratis" aangevinkt + opslaan correct op met prijs 0.
+
+---
+
+## 🧑 User
+
+in beheer kunnen we wel video's aanmaken, maar niet verwijderen. Kan dat? Het zou echter niet moeten kunnen als ie al gekocht is.
+
+---
+
+## 🤖 Assistant
+
+
+
+*Searched for text `btn-danger`, 5 results · Created 2 todos · Read index.php, lines 80 to 90*
+
+
+
+<details>
+<summary><em>Read index.php, lines 1 to 120</em> (+6 meer)</summary>
+
+- Read index.php, lines 1 to 120
+- Read index.php, lines 120 to 250
+- Searched for text `btn-danger`, 5 results
+- Created 2 todos
+- Read index.php, lines 80 to 90
+- Searched for text `// Data ophalen per`, 1 result
+- Read index.php, lines 70 to 76
+</details>
+
+
+
+
+*Checked index.php, no problems found · Completed: *Add delete_video POST handler* (1/2)*
+
+Klaar. Er staat nu een rode **Verwijderen**-knop naast de **Bewerken**-knop in het videooverzicht, met:
+
+- **Bevestigingspopup** ("Weet je zeker dat je deze video wilt verwijderen?")
+- **Veiligheidscheck**: als een video al minstens één keer is gekocht, krijg je de foutmelding *"Deze video is al een keer gekocht en kan niet verwijderd worden."* — de video blijft dan intact.
+
+---
+
+## 🧑 User
+
+dat werkt wel
+
+---
+
+## 🤖 Assistant
+
+Mooi! 🎉
+
+---
+
+## 🧑 User
+
+ik zie alleen nog geen video's op Hans' domein. De website werkt dus wel. /private staat parallel aan /httpdocs, met daarin /videos 
+dat is hetzelfde als bij mij (videos.msss.nl)
+
+---
+
+## 🤖 Assistant
+
+
+
+*Read config.php*
+
+Het klinkt alsof de database voor Hans nog leeg is — de site draait, maar er staan nog geen video's in. De testdata-SQL moet nog worden ingeladen.
+
+Twee vragen:
+
+1. **Configuratie** — Zijn de DB-gegevens in `includes/config.php` voor Hans passend gemaakt? De comments geven al een hint (`h_00086643_videos`). Of is dit een aparte deployment met eigen bestanden?
+
+2. **Testdata** — Moet ik het `testdata_videos.sql` aanpassen voor Hans' domein? De mp4's moeten dan ook op de server staan. Wil je dat ik een aparte deploy-set klaarmaak?
+
+---
+
+## 🧑 User
+
+nee, de database werkt al goed
+We kunnen alles, alleen nog geen video zien
+
+Maar ik zie het al:
+
+// --- Video bestanden (BUITEN de web root!) ------------------
+// Absolute pad naar de private/videos map buiten de web root
+define('VIDEO_PATH', '/var/www/vhosts/msss.nl/video.msss.nl/private/videos');
+
+Alleen wat zou nu het pad hier zijn? (hbfoto.nl)
+
+---
+
+## 🤖 Assistant
+
+Voor `hbfoto.nl` (hoofddomein, geen subdomein) is de Plesk-structuur:
+
+```
+/var/www/vhosts/hbfoto.nl/
+├── httpdocs/              ← web root
+└── private/
+    └── videos/            ← hier komen de mp4's
+```
+
+Dus het pad wordt:
+
+```php
+define('VIDEO_PATH', '/var/www/vhosts/hbfoto.nl/private/videos');
+```
+
+En `BASE_URL` moet ook mee:
+
+```php
+define('BASE_URL', 'https://hbfoto.nl');
+```
+
+Let wel op: deze `config.php` staat nu in **jouw** workspace (`Hans`). Als dit de deploy-set is voor Hans, pas ik hem meteen aan. Of staat er een aparte versie op de server?
+
+---
+
+## 🧑 User
+
+ja, het werkt. We testen nu met Mollie. Ik kreeg een fout (helaas niet opgeschreven welke), maar nu blijft er voor de gebruiker staan "Betaling in behandeling".
+1. als admin kan ik alleen zien dat ie open is. Kan ik ook van Mollie meer info krijgen?
+2 kan ik vanuit de admin interface zoiets ook stoppen of verversen via de mollie api?
+
+---
+
+## 🤖 Assistant
+
+
+
+*Read index.php, lines 95 to 200 · Read index.php, lines 290 to 380*
+
+
+
+<details>
+<summary><em>Read index.php, lines 95 to 200</em> (+10 meer)</summary>
+
+- Read index.php, lines 95 to 200
+- Read index.php, lines 290 to 380
+- Searched for text `purchases.*Verkopen`, 2 results
+- Searched for text `Verkoop|purchases|mollie_payment_id`, 20 results
+- Searched for regex `Verkopen|purchases` (`**/httpdocs/admin/index.php`), 13 results
+- Read index.php, lines 456 to 505
+- Read webhook.php, lines 1 to 50
+- Read checkout.php, lines 1 to 60
+- Read webhook.php, lines 55 to 65
+- Created 3 todos
+- Read index.php, lines 95 to 115
+</details>
+
+
+
+
+*Starting: *Add refresh_payment POST handler* (2/3) · Read index.php, lines 44 to 95*
+
+
+
+<details>
+<summary><em>Read webhook.php, lines 1 to 50</em> (+4 meer)</summary>
+
+- Read webhook.php, lines 1 to 50
+- Read checkout.php, lines 1 to 60
+- Read webhook.php, lines 55 to 65
+- Created 3 todos
+- Read index.php, lines 95 to 115
+</details>
+
+
+
+
+*Starting: *Add refresh_payment POST handler* (2/3) · Read index.php, lines 44 to 95*
+
+
+
+
+*Checked index.php, no problems found · Completed: *Add refresh_payment POST handler* (2/3)*
+
+Klaar. Dit is er bijgekomen in **Verkopen**:
+
+**Nieuwe kolommen:**
+| Kolom | Uitleg |
+|---|---|
+| **Mollie** | Het `mollie_payment_id` (truncated) — zodat je kunt zien of er een betaling bestaat |
+| **Acties** | Knoppen verschijnen alleen bij `open`/`pending`-statussen |
+
+**Twee knoppen:**
+
+| Knop | Doet |
+|---|---|
+| **Ververs** | Haalt de actuele status op bij Mollie via de API en werkt de database bij. Handig als de webhook gemist is. |
+| **Annuleer** | Annuleert de betaling bij Mollie (via API) en zet status op `canceled`. Werkt alleen bij `open`/`pending`. |
+
+De kans is groot dat de vastgelopen betaling na een **Ververs** direct wordt bijgewerkt naar `failed` of `expired`.
+
+---
+
+## 🧑 User
+
+nieuwe kollommen in de database? Dan moet ik toch nog een sql script draaien? De site draait niet lokaal bij mij... Alleen op videos.msss.nl en op hbfoto.nl (elk met een eigen db uiteraard)
+
+---
+
+## 🤖 Assistant
+
+Geen zorgen — er is **geen** nieuwe kolom nodig. De `mollie_payment_id` staat al sinds het begin in de `purchases`-tabel (zie `install_full.sql`). Ik liet hem alleen niet zien in het overzicht.
+
+De wijzigingen zitten puur in `admin/index.php`:
+- De SQL-query selecteert nu ook `p.mollie_payment_id` (bestaande kolom)
+- De tabel toont die extra kolom
+- De **Ververs**- en **Annuleer**-knoppen gebruiken de bestaande Mollie API-key uit `config.php`
+
+Dus gewoon de nieuwe `admin/index.php` deployen via git, klaar.
+
+---
+
+## 🧑 User
+
+de status was "open"
+Die heb ik geannulleerd
+Maar ik krijg:
+
+Annuleren mislukt: [2026-06-04T22:56:57+0200] Error executing API call (422: Unprocessable Entity): The payment cannot be cancelled. Documentation: https://docs.mollie.com/reference/handling-errors
+
+---
+
+## 🤖 Assistant
+
+
+
+*Searched for regex `cancel_payment`, 2 results*
+
+
+
+*Searched for regex `cancel_payment`, 2 results*
+
+
+
+
+*Checked index.php, no problems found*
+
+Gefixt. Als **Annuleer** nu mislukt (omdat Mollie de betaling niet kan annuleren — bijvoorbeeld omdat die al verlopen is), dan haalt de code alsnog de actuele status bij Mollie op en werkt de database daarmee bij.
+
+In jouw geval was de betaling waarschijnlijk al verlopen aan Mollie's kant maar stond-ie nog op `open` in de database. Na het deployen kun je op **Ververs** klikken om de echte status te zien, of nogmaals **Annuleer** proberen — die valt dan terug op het ophalen van de juiste status.
 
 ---

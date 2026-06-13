@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/mail.php';
+
 /**
  * Berekent een verdachtheid-score voor een nieuwe registratie.
  * Score >= 3 → markeer als verdacht.
@@ -105,14 +107,7 @@ function notifyAdminsNewUser(int $newUserId, string $name, string $email): void
           . "\r\n"
           . "— HB Foto & Video (automatisch bericht)";
 
-    $headers = implode("\r\n", [
-        'From: HB Foto & Video <noreply@' . $domain . '>',
-        'Reply-To: noreply@' . $domain,
-        'Content-Type: text/plain; charset=UTF-8',
-        'X-Mailer: PHP/' . PHP_VERSION,
-    ]);
-
     foreach ($admins as $admin) {
-        mail($admin['email'], $subject, $body, $headers);
+        sendMail($admin['email'], $subject, $body);
     }
 }

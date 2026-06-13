@@ -17,9 +17,12 @@ CREATE TABLE IF NOT EXISTS `users` (
     `name`          VARCHAR(100)  NOT NULL,
     `is_admin`      TINYINT(1)    NOT NULL DEFAULT 0,
     `last_activity` DATETIME      DEFAULT NULL COMMENT 'Bijgewerkt bij elke request (max 1x per minuut)',
+    `email_verified_at` DATETIME  DEFAULT NULL COMMENT 'Datum/tijd van e-mailverificatie',
+    `verification_token` VARCHAR(64) DEFAULT NULL COMMENT 'Token voor e-mailverificatie',
     `created_at`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_email` (`email`)
+    UNIQUE KEY `uq_email` (`email`),
+    KEY `idx_verification_token` (`verification_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
