@@ -35,7 +35,10 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
         $mail->Password   = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = SMTP_PORT;
+        $mail->Timeout    = 10;
         $mail->CharSet    = 'UTF-8';
+        $mail->SMTPKeepAlive = false;
+        $mail->SMTPAutoTLS  = true;
 
         // Afzender en ontvanger
         $mail->setFrom(SMTP_FROM_EMAIL, $fromName ?: SMTP_FROM_NAME);
@@ -53,6 +56,26 @@ function sendMail(string $to, string $subject, string $body, string $fromName = 
 
     } catch (Exception $e) {
         error_log("PHPMailer fout: {$mail->ErrorInfo}");
-        return false;
+        error_log("PHPMailer exception: " . $e->getMessage());
+        return fallbackMail($to, $subject, $body, $fromName);
     }
+}
+
+function fallbackMail(string $to, string $subject, string $body, string $fromName = ''): bool
+{
+    $fromEmail = defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $fromName  = $fromName ?: (defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'HB Foto & Video');
+
+    $headers = implode("\r\n", [
+        'From: ' . $fromName . ' <' . $fromEmail . '>',
+        'Reply-To: ' . $fromEmail,
+        'Content-Type: text/plain; charset=UTF-8',
+        'X-Mailer: PHP/' . PHP_VERSION,
+    ]);
+
+    $sent = @mail($to, $subject, $body, $headers);
+    if (! $sent) {
+        error_log("fallbackMail fout: mail() retourneerde false voor ontvanger {$to}");
+    }
+    return $sent;
 }
