@@ -37,7 +37,7 @@ define('SMTP_FROM_NAME', 'HB Foto & Video');
 define('SMTP_HOST',     'smtp.msss.nl');
 define('SMTP_PORT',     465);  // 587 voor TLS, 465 voor SSL
 define('SMTP_USERNAME', 'noreply@msss.nl');  // ← het e-mailaccount dat je gebruikt voor SMTP
-define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van noreply@msss.nl (u$ual)
+define('SMTP_PASSWORD', '');  // ← vul hier het wachtwoord in van de SMTP @msss.nl (u$ual als het goed is)
 define('SMTP_FROM_EMAIL', 'noreply@msss.nl');
 define('SMTP_FROM_NAME', 'MW Foto & Video');
 
