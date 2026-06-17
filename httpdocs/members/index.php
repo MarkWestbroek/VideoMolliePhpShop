@@ -20,8 +20,8 @@ if ($ipStatus['blocked']) {
     <div class="form-card" style="text-align:center;">
         <h1 style="color:#e74c3c;">&#9888; Toegang geblokkeerd</h1>
         <p style="font-size:1.05rem;margin:1.5rem 0;line-height:1.6;">
-            Er is ingelogd vanaf te veel verschillende apparaten of locaties
-            (momenteel <?= $ipStatus['ipCount'] ?> van max <?= $ipStatus['maxIps'] ?>).
+            Je hebt ingelogd vanaf te veel verschillende apparaten of locaties
+            (je account is al gekoppeld aan <?= $ipStatus['ipCount'] ?> IP-adres(sen); maximaal <?= $ipStatus['maxIps'] ?>).
         </p>
         <p style="margin-bottom:1.5rem;color:var(--text-muted);">
             Om misbruik te voorkomen is het bekijken van video's tijdelijk niet mogelijk.<br>

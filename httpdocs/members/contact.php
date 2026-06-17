@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $subject = 'Verzoek account vrijgeven — HB Foto & Video';
         $body    = "Hallo,\r\n\r\n"
             . "Gebruiker {$user['name']} ({$user['email']}, ID {$user['id']}) vraagt om zijn account vrij te geven.\r\n\r\n"
-            . "Deze gebruiker heeft {$ipStatus['ipCount']} unieke login-IP's (max toegestaan: {$ipStatus['maxIps']}).\r\n\r\n"
+            . "Deze gebruiker heeft al {$ipStatus['ipCount']} IP's en probeerde in te loggen vanaf een nieuw IP (max {$ipStatus['maxIps']} toegestaan).\r\n\r\n"
             . "Bericht van de gebruiker:\r\n"
             . "{$message}\r\n\r\n"
             . "Beheer gebruikers: " . BASE_URL . "/admin/users.php?user={$user['id']}\r\n\r\n"

@@ -140,6 +140,8 @@ function trackLoginIp(int $userId): bool
     $ttl  = IP_TRACK_TTL;
     $expireTime = date('Y-m-d H:i:s', time() - $ttl);
 
+    error_log("Login IP-track start: user {$userId}, huidig IP {$ip}, TTL {$ttl}s");
+
     // Verwijder verlopen IP's
     db()->prepare('DELETE FROM login_ips WHERE user_id = ? AND last_seen < ?')
         ->execute([$userId, $expireTime]);
@@ -159,6 +161,8 @@ function trackLoginIp(int $userId): bool
     $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
     $stmt->execute([$userId]);
     $cnt = (int) $stmt->fetchColumn();
+
+    error_log("Login IP-track: user {$userId}, nieuw IP {$ip}, al {$cnt} bestaande IP's, max " . IP_TRACK_MAX);
 
     if ($cnt >= IP_TRACK_MAX) {
         // Limiet bereikt: blokkeer video-toegang, voeg IP niet toe
