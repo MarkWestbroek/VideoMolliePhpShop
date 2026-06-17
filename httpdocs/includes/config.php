@@ -48,8 +48,8 @@ defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 1209600); // 2 weken = 14 dage
 */
 
 --- IP-tracking (TEST tegengaan login delen) --------------------
-defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 1;       // max unieke IP's per gebruiker
-defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 180); // tijdelijk 3 minuten
+defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 2;       // max unieke IP's per gebruiker
+defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 600); // tijdelijk 3 minuten
 
 // Lokale override voor wachtwoorden / staging-specifieke instellingen.
 // Maak een httpdocs/includes/config.local.php aan en voeg die toe aan .gitignore.
