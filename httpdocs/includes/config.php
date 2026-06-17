@@ -44,12 +44,12 @@ define('SMTP_FROM_NAME', 'MW Foto & Video');
 // --- IP-tracking (tegengaan login delen) --------------------
 /*
 defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 3);       // max unieke IP's per gebruiker
-defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 1209600); // 2 weken = 14 dagen * 24 uur * 3600 seconden
+defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 1209600); // 2 weken = 14 * 24 * 3600
 */
 
---- IP-tracking (TEST tegengaan login delen) --------------------
-defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 2;       // max unieke IP's per gebruiker
-defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 600); // tijdelijk 3 minuten
+// --- IP-tracking (TEMP test) ---
+defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 2);
+defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 600); // 10 minuten
 
 // Lokale override voor wachtwoorden / staging-specifieke instellingen.
 // Maak een httpdocs/includes/config.local.php aan en voeg die toe aan .gitignore.
