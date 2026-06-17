@@ -156,9 +156,9 @@ function trackLoginIp(int $userId): bool
     }
 
     // Nieuw IP — tel hoeveel actieve IP's er zijn
-    $cnt = (int) db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?')
-        ->execute([$userId])
-        ->fetchColumn();
+    $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $cnt = (int) $stmt->fetchColumn();
 
     if ($cnt >= IP_TRACK_MAX) {
         // Limiet bereikt: blokkeer video-toegang, voeg IP niet toe
@@ -193,9 +193,9 @@ function getViewingBlockedStatus(): array
     db()->prepare('DELETE FROM login_ips WHERE user_id = ? AND last_seen < ?')
         ->execute([$userId, $expireTime]);
 
-    $cnt = (int) db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?')
-        ->execute([$userId])
-        ->fetchColumn();
+    $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $cnt = (int) $stmt->fetchColumn();
 
     return [
         'blocked' => !empty($_SESSION['viewing_blocked']),

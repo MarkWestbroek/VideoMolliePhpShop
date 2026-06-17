@@ -42,8 +42,8 @@ define('SMTP_FROM_EMAIL', 'noreply@msss.nl');
 define('SMTP_FROM_NAME', 'MW Foto & Video');
 
 // --- IP-tracking (tegengaan login delen) --------------------
-define('IP_TRACK_MAX',  3);       // max aantal unieke IP's per gebruiker
-define('IP_TRACK_TTL',  1209600); // 2 weken = 14 * 24 * 3600 seconden
+defined('IP_TRACK_MAX') || define('IP_TRACK_MAX', 3);       // max unieke IP's per gebruiker
+defined('IP_TRACK_TTL') || define('IP_TRACK_TTL', 1209600); // 2 weken
 
 // Lokale override voor wachtwoorden / staging-specifieke instellingen.
 // Maak een httpdocs/includes/config.local.php aan en voeg die toe aan .gitignore.
