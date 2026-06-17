@@ -146,8 +146,47 @@ require_once __DIR__ . '/../includes/header.php';
     </section>
 
     <!-- ============================================================ -->
+    <section style="margin-bottom:2.5rem;">
+        <h2>6. Login delen tegengaan (IP-tracking)</h2>
+        <p>De site houdt bij vanaf welke <strong>IP-adressen</strong> een gebruiker
+           inlogt. Dit voorkomt dat klanten hun account delen met anderen.</p>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Hoe het werkt</h3>
+        <ul>
+            <li>Maximaal <strong>3 unieke IP-adressen</strong> per gebruiker in
+                een periode van <strong>2 weken</strong>.</li>
+            <li>Logt iemand in met een <strong>4e IP</strong>? Dan wordt het
+                <strong>bekijken van video's geblokkeerd</strong>. De gebruiker
+                kan nog wel inloggen en een bericht sturen via het contactformulier.</li>
+            <li>IP's ouder dan 2 weken vervallen automatisch, zodat een gebruiker
+                daarna weer met een nieuw IP kan inloggen.</li>
+        </ul>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Wat zie jij als beheerder?</h3>
+        <ul>
+            <li>In het <strong>gebruikersoverzicht</strong> staat een kolom
+                <strong>IP's</strong> met het aantal actieve IP-adressen.</li>
+            <li>Bij <strong>3 IP's</strong> wordt het getal <span style="color:#e74c3c;font-weight:600;">rood</span>
+                weergegeven — de limiet is bereikt.</li>
+            <li>Klap een gebruiker open (<strong>Details</strong>) om te zien
+                <em>welke</em> IP's en wanneer ze voor het eerst en laatst zijn gezien.</li>
+        </ul>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Blokkade opheffen</h3>
+        <ol>
+            <li>Als een echte klant geblokkeerd is (bijv. door wisselende wifi of
+                4G), klik je in het gebruikersoverzicht op de knop
+                <strong>&#x21bb; IP's</strong>.</li>
+            <li>Dit verwijdert álle opgeslagen IP's van die gebruiker. De volgende
+                keer dat hij inlogt begint de teller opnieuw.</li>
+            <li>Je kunt de IP-lijst ook wissen via de <strong>Details</strong>-weergave
+                (daar staat ook een Reset-knop).</li>
+        </ol>
+    </section>
+
+    <!-- ============================================================ -->
     <section style="margin-bottom:1rem;">
-        <h2>6. Veelgestelde vragen</h2>
+        <h2>7. Veelgestelde vragen</h2>
         <p><strong>Een klant ziet zijn video niet.</strong><br>
            Controleer: is de video <em>actief</em>? Hoort hij bij een
            <em>event</em> waarvan de klant de code nog niet heeft ingevoerd?

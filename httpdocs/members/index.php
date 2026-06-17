@@ -10,6 +10,32 @@ requireLogin();
 
 $user = currentUser();
 
+// IP-tracking: controleer op blokkade door te veel login-IP's
+$ipStatus = getViewingBlockedStatus();
+
+if ($ipStatus['blocked']) {
+    $pageTitle = 'Toegang geblokkeerd — HB Foto & Video';
+    require_once __DIR__ . '/../includes/header.php';
+    ?>
+    <div class="form-card" style="text-align:center;">
+        <h1 style="color:#e74c3c;">&#9888; Toegang geblokkeerd</h1>
+        <p style="font-size:1.05rem;margin:1.5rem 0;line-height:1.6;">
+            Er is ingelogd vanaf te veel verschillende apparaten of locaties
+            (momenteel <?= $ipStatus['ipCount'] ?> van max <?= $ipStatus['maxIps'] ?>).
+        </p>
+        <p style="margin-bottom:1.5rem;color:var(--text-muted);">
+            Om misbruik te voorkomen is het bekijken van video's tijdelijk niet mogelijk.<br>
+            Neem contact op met de beheerder om dit op te lossen.
+        </p>
+        <a href="<?= BASE_URL ?>/members/contact.php" class="btn btn-primary">
+            &#9993; Contact opnemen
+        </a>
+    </div>
+    <?php
+    require_once __DIR__ . '/../includes/footer.php';
+    exit;
+}
+
 // Bepaal tot welke events deze gebruiker toegang heeft
 $eventIds = getUserEventIds((int) $user['id']);
 

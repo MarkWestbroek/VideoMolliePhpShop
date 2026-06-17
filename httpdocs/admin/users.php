@@ -55,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    // IP-records resetten voor gebruiker
+    if ($postAction === 'reset_ips' && $userId > 0) {
+        resetLoginIps($userId);
+        $message = 'Alle login-IP\'s zijn verwijderd. De gebruiker kan opnieuw inloggen vanaf een nieuw IP.';
+        header('Location: ' . BASE_URL . '/admin/users.php?ips_reset=1');
+        exit;
+    }
 }
 
 // ============================================================
@@ -67,10 +75,13 @@ $users = db()->query(
     'SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
-            SUM(CASE WHEN p.status = \'paid\' THEN p.amount ELSE 0 END) AS total_paid
+            SUM(CASE WHEN p.status = \'paid\' THEN p.amount ELSE 0 END) AS total_paid,
+            COUNT(DISTINCT li.ip_address) AS ip_count
      FROM users u
      LEFT JOIN event_access ea ON ea.user_id = u.id
      LEFT JOIN purchases    p  ON p.user_id  = u.id
+     LEFT JOIN login_ips    li ON li.user_id = u.id
+        AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY)
      GROUP BY u.id
      ORDER BY u.last_activity DESC, u.created_at DESC'
 )->fetchAll();
@@ -81,8 +92,9 @@ $confirmDeleteId = isset($_GET['delete']) ? (int) $_GET['delete'] : 0;
 // Detail-view: één gebruiker uitklappen
 $detailUserId = isset($_GET['user']) ? (int) $_GET['user'] : 0;
 $detail       = null;
-$detailEvents = [];
+$detailEvents   = [];
 $detailPurchases = [];
+$detailIps       = [];
 
 if ($detailUserId > 0) {
     $stmt = db()->prepare('SELECT id, email, name, is_admin, email_verified_at, created_at FROM users WHERE id = ? LIMIT 1');
@@ -111,6 +123,9 @@ if ($detailUserId > 0) {
         );
         $stmt->execute([$detailUserId]);
         $detailPurchases = $stmt->fetchAll();
+
+        // Login IP's
+        $detailIps = getUserLoginIps($detailUserId);
     } else {
         $detailUserId = 0;
     }
@@ -155,6 +170,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <th>E-mail</th>
                 <th>Geregistreerd</th>
                 <th title="Actief binnen de laatste 15 minuten">Online</th>
+                <th title="Aantal unieke IP's afgelopen 2 weken">IP's</th>
                 <th>E-mail</th>
                 <th>Events</th>
                 <th>Aankopen</th>
@@ -194,6 +210,17 @@ require_once __DIR__ . '/../includes/header.php';
                             else                    echo date('d-m-Y', strtotime($u['last_activity']));
                             ?>
                         </span>
+                    <?php else: ?>
+                        <span class="text-muted">—</span>
+                    <?php endif; ?>
+                </td>
+                <td style="text-align:center">
+                    <?php if ((int) $u['ip_count'] > 0): ?>
+                        <?php if ((int) $u['ip_count'] >= 3): ?>
+                            <span style="color:#e74c3c;font-weight:600;" title="Limiet bereikt — mogelijk geblokkeerd"><?= (int) $u['ip_count'] ?></span>
+                        <?php else: ?>
+                            <?= (int) $u['ip_count'] ?>
+                        <?php endif; ?>
                     <?php else: ?>
                         <span class="text-muted">—</span>
                     <?php endif; ?>
@@ -247,8 +274,17 @@ require_once __DIR__ . '/../includes/header.php';
                                 title="<?= $u['is_admin'] ? 'Admin-rechten intrekken' : 'Admin-rechten geven' ?>">
                             <?= $u['is_admin'] ? '&#x2193; Admin' : '&#x2191; Admin' ?>
                         </button>
+                    </form>                    <?php if ((int) $u['ip_count'] > 0): ?>
+                    <form method="post" style="display:inline" onsubmit="return confirm('Alle login-IP\'s voor deze gebruiker verwijderen?')">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="post_action" value="reset_ips">
+                        <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                        <button type="submit" class="btn btn-sm btn-secondary"
+                                title="IP-blokkade opheffen">
+                            &#x21bb; IP's
+                        </button>
                     </form>
-                    <?php if ($confirmDeleteId === (int) $u['id']): ?>
+                    <?php endif; ?>                    <?php if ($confirmDeleteId === (int) $u['id']): ?>
                         <!-- Bevestigingsknop zichtbaar als ?delete=ID in URL -->
                         <a href="?" class="btn btn-sm btn-secondary" title="Annuleren">Annuleer</a>
                     <?php else: ?>
@@ -263,7 +299,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <?php if ($confirmDeleteId === (int) $u['id']): ?>
             <tr>
-                <td colspan="11" style="padding:0;">
+                <td colspan="12" style="padding:0;">
                     <div style="padding:1.25rem 1.5rem;background:#3d0f0f;border-top:2px solid #c0392b;">
                         <strong style="color:#e74c3c;">&#9888; Gebruiker definitief verwijderen?</strong>
                         <p style="margin:.5rem 0 1rem;font-size:.92rem;">
@@ -288,7 +324,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             <?php if ($isDetail && $detail): ?>
             <tr>
-                <td colspan="10" style="padding:0;">
+                <td colspan="12" style="padding:0;">
                     <div style="padding:1.25rem 1.5rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);">
 
                         <h3 style="margin:0 0 1rem">
@@ -370,6 +406,49 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <?php if ($p['paid_at']): ?>
                                                         <br><span style="color:var(--text-muted)">betaald: <?= date('d-m-Y H:i', strtotime($p['paid_at'])) ?></span>
                                                     <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Login IP's -->
+                            <div>
+                                <h4 style="margin:0 0 .6rem;font-size:.9rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">
+                                    Login-IP's (<?= count($detailIps) ?>)
+                                    <?php if (!empty($detailIps)): ?>
+                                        <form method="post" style="display:inline;margin-left:.5rem;" onsubmit="return confirm('Alle login-IP's voor deze gebruiker verwijderen?')">
+                                            <?= csrfField() ?>
+                                            <input type="hidden" name="post_action" value="reset_ips">
+                                            <input type="hidden" name="user_id" value="<?= (int) $detail['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-secondary" style="font-size:.75rem;">&#x21bb; Reset</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </h4>
+                                <?php if (empty($detailIps)): ?>
+                                    <p class="text-muted" style="font-size:.88rem">Nog geen login-IP's geregistreerd.</p>
+                                <?php else: ?>
+                                    <table style="width:100%;font-size:.88rem;border-collapse:collapse;">
+                                        <thead>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <th style="text-align:left;padding:.25rem .5rem">IP-adres</th>
+                                                <th style="text-align:left;padding:.25rem .5rem">Eerst gezien</th>
+                                                <th style="text-align:left;padding:.25rem .5rem">Laatst gezien</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php foreach ($detailIps as $lip): ?>
+                                            <tr>
+                                                <td style="padding:.3rem .5rem;font-family:monospace;">
+                                                    <?= htmlspecialchars($lip['ip_address'], ENT_QUOTES, 'UTF-8') ?>
+                                                </td>
+                                                <td style="padding:.3rem .5rem;font-size:.82rem;white-space:nowrap">
+                                                    <?= date('d-m-Y H:i', strtotime($lip['first_seen'])) ?>
+                                                </td>
+                                                <td style="padding:.3rem .5rem;font-size:.82rem;white-space:nowrap">
+                                                    <?= date('d-m-Y H:i', strtotime($lip['last_seen'])) ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
