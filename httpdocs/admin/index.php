@@ -406,10 +406,12 @@ if ($action === 'dashboard'): ?>
                 <td class="actions">
                     <a href="?action=edit_video&id=<?= (int) $v['id'] ?>" class="btn btn-secondary btn-sm">Bewerken</a>
                     <form method="post" action="?action=delete_video" style="display:inline"
-                          onsubmit="var pc=parseInt(this.getAttribute('data-purchases')||'0');if(pc>0){var inp=prompt('Deze video is al '+pc+' keer gekocht.\n\nType \"verwijderen\" om de video tóch te verwijderen.\nLet op: doe dit alleen bij test-video\'s.','');if(inp!=='verwijderen'){return false;}var hi=document.createElement('input');hi.type='hidden';hi.name='confirm_delete';hi.value='verwijderen';this.appendChild(hi);return true;}return confirm('Weet je zeker dat je deze video wilt verwijderen?');"
-                          data-purchases="<?= (int) $v['purchase_count'] ?>">
+                          class="delete-video-form"
+                          data-purchases="<?= (int) $v['purchase_count'] ?>"
+                          data-title="<?= htmlspecialchars($v['title'], ENT_QUOTES, 'UTF-8') ?>">
                         <?= csrfField() ?>
                         <input type="hidden" name="id" value="<?= (int) $v['id'] ?>">
+                        <input type="hidden" name="confirm_delete" value="">
                         <button type="submit" class="btn btn-danger btn-sm">Verwijderen</button>
                     </form>
                 </td>
@@ -769,4 +771,24 @@ elseif ($action === 'sales_overview' && $salesOverview): ?>
 
 <?php endif; ?>
 
+<script>
+document.querySelectorAll('.delete-video-form').forEach(function(f) {
+    f.addEventListener('submit', function(e) {
+        var pc = parseInt(this.getAttribute('data-purchases') || '0');
+        var title = this.getAttribute('data-title') || '';
+        if (pc > 0) {
+            e.preventDefault();
+            var inp = prompt('Video "' + title + '" is al ' + pc + ' keer gekocht.\n\nType "verwijderen" om de video tóch te verwijderen.\nLet op: doe dit alleen bij test-video\'s.', '');
+            if (inp === 'verwijderen') {
+                this.querySelector('input[name=confirm_delete]').value = 'verwijderen';
+                this.submit();
+            }
+            return;
+        }
+        if (!confirm('Weet je zeker dat je deze video wilt verwijderen?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
