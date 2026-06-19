@@ -129,7 +129,7 @@ if ($emailFilter === 'verified') {
     $conditions[] = 'u.email_verified_at IS NULL';
 }
 if ($onlineFilter === 'streaming') {
-    $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
+    $conditions[] = 'u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
 } elseif ($onlineFilter === 'online') {
     $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
 } elseif ($onlineFilter === 'offline') {
@@ -157,7 +157,7 @@ if ($purchFilter === 'none') {
 $having = $havingConds ? ' HAVING ' . implode(' AND ', $havingConds) : '';
 
 $users = db()->prepare(
-    "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
+    "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity, u.streaming_at,
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,
@@ -378,11 +378,12 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
                 <td style="text-align:center">
                     <?php
                     $lastActivity = $u['last_activity'] ? time() - strtotime($u['last_activity']) : null;
-                    $isStreaming = $lastActivity !== null && $lastActivity <= 120;  // 2 min = streaming
-                    $isOnline    = $lastActivity !== null && $lastActivity <= 900;  // 15 min = online
+                    $streamingAgo = $u['streaming_at'] ? time() - strtotime($u['streaming_at']) : null;
+                    $isStreaming  = $streamingAgo !== null && $streamingAgo <= 120;  // 2 min = echte video-stream
+                    $isOnline     = $lastActivity !== null && $lastActivity <= 900;   // 15 min = online
                     ?>
                     <?php if ($isStreaming): ?>
-                        <span style="color:#e74c3c;font-weight:600;" title="Video aan het streamen">&#9679; stream</span>
+                        <span style="color:#e74c3c;font-weight:600;" title="Video aan het streamen (streaming_at: <?= date('H:i:s', strtotime($u['streaming_at'])) ?>)">&#9679; stream</span>
                     <?php elseif ($isOnline): ?>
                         <span class="status-paid" title="Actief: <?= date('H:i', strtotime($u['last_activity'])) ?>">&#9679; online</span>
                     <?php elseif ($u['last_activity']): ?>

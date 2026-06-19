@@ -56,12 +56,13 @@ if (!hasPurchased((int) $_SESSION['user_id'], $videoId)) {
     exit;
 }
 
-// 4b. Streaming-status: forceer last_activity update zodat admin ziet dat gebruiker streamt
+// 4b. Streaming-status: forceer last_activity + streaming_at update
 //     Normaal update currentUser() max 1x per minuut; hier forceren we vaker bij actief kijken.
+//     streaming_at is de bron voor de 🔴 stream-indicator in de admin-gebruikerslijst.
 $userId = (int) $_SESSION['user_id'];
 $now    = time();
 if (empty($_SESSION['stream_activity_updated']) || $now - $_SESSION['stream_activity_updated'] >= 30) {
-    db()->prepare('UPDATE users SET last_activity = NOW() WHERE id = ?')->execute([$userId]);
+    db()->prepare('UPDATE users SET last_activity = NOW(), streaming_at = NOW() WHERE id = ?')->execute([$userId]);
     $_SESSION['stream_activity_updated'] = $now;
 }
 
