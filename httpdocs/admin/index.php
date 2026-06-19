@@ -81,8 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Controleren of er al aankopen zijn
             $stmt = db()->prepare('SELECT COUNT(*) FROM purchases WHERE video_id = ?');
             $stmt->execute([$id]);
-            if ((int) $stmt->fetchColumn() > 0) {
-                $error = 'Deze video is al een keer gekocht en kan niet verwijderd worden.';
+            $purchaseCount = (int) $stmt->fetchColumn();
+            if ($purchaseCount > 0 && ($_POST['confirm_delete'] ?? '') !== 'verwijderen') {
+                $error = 'Deze video is al ' . $purchaseCount . ' keer gekocht. Type "verwijderen" in het veld om toch te verwijderen.';
             } else {
                 $stmt = db()->prepare('DELETE FROM videos WHERE id = ?');
                 $stmt->execute([$id]);
@@ -230,11 +231,13 @@ $events    = db()->query('SELECT id, naam FROM events ORDER BY naam')->fetchAll(
 if ($action === 'dashboard') {
     $videos = db()->query(
         'SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam,
-                COUNT(vv.id) AS view_count
+                COUNT(DISTINCT vv.id) AS view_count,
+                COUNT(DISTINCT p.id)  AS purchase_count
          FROM videos v
          LEFT JOIN staffels s ON s.id = v.staffel_id
          LEFT JOIN events   e ON e.id = v.event_id
          LEFT JOIN video_views vv ON vv.video_id = v.id
+         LEFT JOIN purchases    p  ON p.video_id = v.id
          GROUP BY v.id
          ORDER BY v.created_at DESC'
     )->fetchAll();
@@ -403,7 +406,8 @@ if ($action === 'dashboard'): ?>
                 <td class="actions">
                     <a href="?action=edit_video&id=<?= (int) $v['id'] ?>" class="btn btn-secondary btn-sm">Bewerken</a>
                     <form method="post" action="?action=delete_video" style="display:inline"
-                          onsubmit="return confirm('Weet je zeker dat je deze video wilt verwijderen?');">
+                          onsubmit="var pc=parseInt(this.getAttribute('data-purchases')||'0');if(pc>0){var inp=prompt('Deze video is al '+pc+' keer gekocht.\n\nType \"verwijderen\" om de video tóch te verwijderen.\nLet op: doe dit alleen bij test-video\'s.','');if(inp!=='verwijderen'){return false;}var hi=document.createElement('input');hi.type='hidden';hi.name='confirm_delete';hi.value='verwijderen';this.appendChild(hi);return true;}return confirm('Weet je zeker dat je deze video wilt verwijderen?');"
+                          data-purchases="<?= (int) $v['purchase_count'] ?>">
                         <?= csrfField() ?>
                         <input type="hidden" name="id" value="<?= (int) $v['id'] ?>">
                         <button type="submit" class="btn btn-danger btn-sm">Verwijderen</button>
