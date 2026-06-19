@@ -28,8 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $staffelId   = (!$isGratis && ($_POST['staffel_id'] ?? '') !== '') ? (int) $_POST['staffel_id'] : null;
         $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
-        if ($title === '' || $filename === '') {
-            $error = 'Vul alle verplichte velden in.';
+        if ($title === '' || ($filename === '' && $vimeoId === '')) {
+            $error = 'Vul titel + bestandsnaam óf Vimeo ID in.';
         } elseif (!$isGratis && $staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
             $error = 'Voer een geldige prijs in (minimaal € 0,01), kies een staffel, of vink "Gratis" aan.';
         } else {
@@ -54,12 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $price       = $_POST['price']    ?? '';
         $filename    = trim($_POST['filename']    ?? '');
         $active      = isset($_POST['active']) ? 1 : 0;
+        $vimeoId     = trim($_POST['vimeo_id']     ?? '');
         $isGratis    = isset($_POST['gratis']);
         $staffelId   = (!$isGratis && ($_POST['staffel_id'] ?? '') !== '') ? (int) $_POST['staffel_id'] : null;
         $eventId     = ($_POST['event_id'] ?? '') !== '' ? (int) $_POST['event_id'] : null;
 
-        if ($id <= 0 || $title === '' || $filename === '') {
-            $error = 'Vul alle verplichte velden in.';
+        if ($id <= 0 || $title === '' || ($filename === '' && $vimeoId === '')) {
+            $error = 'Vul titel + bestandsnaam óf Vimeo ID in.';
         } elseif (!$isGratis && $staffelId === null && ($price === '' || !is_numeric($price) || (float) $price < 0.01)) {
             $error = 'Voer een geldige prijs in, kies een staffel, of vink “Gratis” aan.';
         } else {
@@ -689,17 +690,22 @@ elseif ($action === 'add_video'): ?>
     var req        = document.getElementById('price-required-add');
     var staffelGrp = document.getElementById('staffel-group-add');
     var priceGrp   = document.getElementById('price-group-add');
+    var vimeoInp   = document.getElementById('vimeo_id-add');
+    var fileInp    = document.getElementById('filename');
     function toggle() {
         var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
+        var hasVimeo   = vimeoInp.value.trim() !== '';
         staffelGrp.style.display = gratis ? 'none' : '';
         priceGrp.style.display   = gratis ? 'none' : '';
         inp.required = !gratis && !hasStaffel;
         inp.min      = gratis ? '0' : '0.01';
         req.style.display = (gratis || hasStaffel) ? 'none' : '';
+        fileInp.required = !hasVimeo;
     }
     chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
+    vimeoInp.addEventListener('input', toggle);
     toggle();
 })();
 </script>
@@ -818,17 +824,22 @@ elseif ($action === 'edit_video' && $video): ?>
     var req        = document.getElementById('price-required-edit');
     var staffelGrp = document.getElementById('staffel-group-edit');
     var priceGrp   = document.getElementById('price-group-edit');
+    var vimeoInp   = document.getElementById('vimeo_id-edit');
+    var fileInp    = document.getElementById('filename');
     function toggle() {
         var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
+        var hasVimeo   = vimeoInp.value.trim() !== '';
         staffelGrp.style.display = gratis ? 'none' : '';
         priceGrp.style.display   = gratis ? 'none' : '';
         inp.required = !gratis && !hasStaffel;
         inp.min      = gratis ? '0' : '0.01';
         req.style.display = (gratis || hasStaffel) ? 'none' : '';
+        fileInp.required = !hasVimeo;
     }
     chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
+    vimeoInp.addEventListener('input', toggle);
     toggle();
 })();
 </script>
