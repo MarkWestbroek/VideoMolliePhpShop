@@ -231,8 +231,23 @@ $staffels  = db()->query('SELECT id, naam FROM staffels ORDER BY naam')->fetchAl
 $events    = db()->query('SELECT id, naam FROM events ORDER BY naam')->fetchAll();
 
 if ($action === 'dashboard') {
-    $videos = db()->query(
-        'SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam,
+    $dashStatus = $_GET['dash_status'] ?? '';
+    $dashStaffel = $_GET['dash_staffel'] ?? '';
+
+    $dashWhere = '';
+    $dashParams = [];
+    $dashConditions = [];
+    if ($dashStatus === 'active')     { $dashConditions[] = 'v.active = 1 AND v.is_test = 0'; }
+    elseif ($dashStatus === 'inactive') { $dashConditions[] = 'v.active = 0 AND v.is_test = 0'; }
+    elseif ($dashStatus === 'test')     { $dashConditions[] = 'v.is_test = 1'; }
+    if ($dashStaffel !== '') {
+        if ($dashStaffel === 'none') { $dashConditions[] = 'v.staffel_id IS NULL'; }
+        else { $dashConditions[] = 'v.staffel_id = ?'; $dashParams[] = (int) $dashStaffel; }
+    }
+    if ($dashConditions) { $dashWhere = ' WHERE ' . implode(' AND ', $dashConditions); }
+
+    $videos = db()->prepare(
+        "SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam,
                 COUNT(DISTINCT vv.id) AS view_count,
                 COUNT(DISTINCT p.id)  AS purchase_count
          FROM videos v
@@ -240,9 +255,12 @@ if ($action === 'dashboard') {
          LEFT JOIN events   e ON e.id = v.event_id
          LEFT JOIN video_views vv ON vv.video_id = v.id
          LEFT JOIN purchases    p  ON p.video_id = v.id
+         {$dashWhere}
          GROUP BY v.id
-         ORDER BY v.created_at DESC'
-    )->fetchAll();
+         ORDER BY v.created_at DESC"
+    );
+    $videos->execute($dashParams);
+    $videos = $videos->fetchAll();
 }
 
 if ($action === 'purchases') {
@@ -412,6 +430,31 @@ if ($action === 'dashboard'): ?>
                 <th>Bekeken</th>
                 <th>Status</th>
                 <th>Acties</th>
+            </tr>
+            <tr style="background:var(--surface-hover, rgba(255,255,255,.02));">
+                <td></td>
+                <td></td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="?action=dashboard" <?= $dashStaffel === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="?action=dashboard&dash_staffel=none" <?= $dashStaffel === 'none' ? 'selected' : '' ?>>Geen staffel</option>
+                        <?php foreach ($staffels as $s): ?>
+                            <option value="?action=dashboard&dash_staffel=<?= (int) $s['id'] ?>" <?= $dashStaffel === (string) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['naam'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="?action=dashboard" <?= $dashStatus === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="?action=dashboard&dash_status=active" <?= $dashStatus === 'active' ? 'selected' : '' ?>>Actief</option>
+                        <option value="?action=dashboard&dash_status=inactive" <?= $dashStatus === 'inactive' ? 'selected' : '' ?>>Inactief</option>
+                        <option value="?action=dashboard&dash_status=test" <?= $dashStatus === 'test' ? 'selected' : '' ?>>Test</option>
+                    </select>
+                </td>
+                <td></td>
             </tr>
         </thead>
         <tbody>
@@ -766,8 +809,8 @@ elseif ($action === 'purchases'):
                 <td></td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:#ccc;">
-                        <option value="<?= $filterBase ?>" <?= $amountFilter === '' ? 'selected' : '' ?>>Alle bedragen</option>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="<?= $filterBase ?>" <?= $amountFilter === '' ? 'selected' : '' ?> style="color:#ddd;">Alle bedragen</option>
                         <?php foreach ($distinctAmounts as $amt): $amtFloat = (float) $amt; if ($amtFloat <= 0) continue; ?>
                             <option value="<?= $filterBase . '&amount=' . urlencode((string) $amt) ?>" <?= $amountFilter === (string) $amt ? 'selected' : '' ?>>
                                 €&nbsp;<?= number_format($amtFloat, 2, ',', '.') ?>
@@ -776,7 +819,7 @@ elseif ($action === 'purchases'):
                     </select>
                 </td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:#ccc;">
+                    <select onchange="location.href=this.value" class="filter-drop" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
                         <option value="<?= $filterBase ?>" <?= $statusFilter === '' ? 'selected' : '' ?>>Alle</option>
                         <?php foreach ($distinctStatuses as $st): ?>
                             <option value="<?= $filterBase . '&status=' . urlencode($st) ?>" <?= $statusFilter === $st ? 'selected' : '' ?>><?= htmlspecialchars($st, ENT_QUOTES, 'UTF-8') ?></option>

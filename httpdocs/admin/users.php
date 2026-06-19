@@ -244,7 +244,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
     <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
-    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
+    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:#2a2a2a;color:#ddd;">
         <option value="">Alle gebruikers</option>
         <option value="online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
         <option value="admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admins</option>
@@ -286,6 +286,34 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $fil
                 <th><?= $sortLink('total_paid', 'Betaald') ?></th>
                 <th>Rol</th>
                 <th>Acties</th>
+            </tr>
+            <tr style="background:var(--surface-hover, rgba(255,255,255,.02));">
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <?php $ubase = '?sort=' . $sort . '&dir=' . $dir . ($search !== '' ? '&search=' . urlencode($search) : ''); ?>
+                        <option value="<?= $ubase ?>" <?= $filter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="<?= $ubase ?>&filter=verified" <?= $filter === 'verified' ? 'selected' : '' ?>>Geverifieerd</option>
+                        <option value="<?= $ubase ?>&filter=unverified" <?= $filter === 'unverified' ? 'selected' : '' ?>>Niet geverifieerd</option>
+                    </select>
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="<?= $ubase ?>" <?= $filter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="<?= $ubase ?>&filter=admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admin</option>
+                        <option value="<?= $ubase ?>&filter=online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
+                        <option value="<?= $ubase ?>&filter=blocked" <?= $filter === 'blocked' ? 'selected' : '' ?>>Geblokkeerd</option>
+                    </select>
+                </td>
+                <td></td>
             </tr>
         </thead>
         <tbody>
