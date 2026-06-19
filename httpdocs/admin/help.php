@@ -75,6 +75,19 @@ require_once __DIR__ . '/../includes/header.php';
             Tip: zet een video op <em>inactief</em> (via Bewerken) als je hem
             tijdelijk wilt verbergen zonder hem te verwijderen.
         </p>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Testvideo's</h3>
+        <p>Je kunt een video markeren als <strong>testvideo</strong> via het vinkje
+           in het formulier. Testvideo's:</p>
+        <ul>
+            <li>Zijn <strong>onzichtbaar</strong> voor gewone gebruikers</li>
+            <li>Tellen <strong>niet mee</strong> in het verkoopoverzicht en de totalen</li>
+            <li>Zijn wel gewoon zichtbaar en afspeelbaar voor beheerders</li>
+        </ul>
+        <p class="text-muted" style="font-size:.9rem;">
+            Gebruik testvideo's om nieuwe functionaliteit uit te proberen zonder
+            dat klanten het zien.
+        </p>
     </section>
 
     <!-- ============================================================ -->
@@ -202,6 +215,18 @@ require_once __DIR__ . '/../includes/header.php';
            Jij en andere admins kunnen vanaf elk apparaat inloggen zonder geblokkeerd
            te worden. Dit is zo ingesteld zodat je altijd toegang hebt om eventuele
            blokkades van klanten op te heffen.</p>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Automatische melding</h3>
+        <p>Als een gebruiker geblokkeerd wordt, ontvangen alle beheerders automatisch
+           een e-mail met de gegevens van de gebruiker en het nieuwe IP-adres.
+           Je hoeft dus niet zelf in de gaten te houden of er blokkades zijn.</p>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">IP-informatie</h3>
+        <p>In de details van een gebruiker zie je bij elk IP-adres ook de
+           <strong>internetprovider</strong> (bijv. KPN, Ziggo, Vodafone) en of
+           het om een <strong>mobiele verbinding</strong> gaat. Dit helpt om te
+           beoordelen of verschillende IP's van dezelfde persoon kunnen zijn
+           (bijv. thuis-wifi vs. telefoon onderweg).</p>
     </section>
 
     <!-- ============================================================ -->

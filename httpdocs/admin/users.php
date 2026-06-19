@@ -450,6 +450,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         <thead>
                                             <tr style="border-bottom:1px solid var(--border);">
                                                 <th style="text-align:left;padding:.25rem .5rem">IP-adres</th>
+                                                <th style="text-align:left;padding:.25rem .5rem">Provider</th>
                                                 <th style="text-align:left;padding:.25rem .5rem">Eerst gezien</th>
                                                 <th style="text-align:left;padding:.25rem .5rem">Laatst gezien</th>
                                             </tr>
@@ -459,6 +460,16 @@ require_once __DIR__ . '/../includes/header.php';
                                             <tr>
                                                 <td style="padding:.3rem .5rem;font-family:monospace;">
                                                     <?= htmlspecialchars($lip['ip_address'], ENT_QUOTES, 'UTF-8') ?>
+                                                </td>
+                                                <td style="padding:.3rem .5rem;font-size:.82rem;">
+                                                    <?php if ($lip['isp']): ?>
+                                                        <?= htmlspecialchars($lip['isp'], ENT_QUOTES, 'UTF-8') ?>
+                                                        <?php if (($lip['is_mobile'] ?? 0)): ?>
+                                                            <span style="color:var(--text-muted);">/ Mobiel</span>
+                                                        <?php endif; ?>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">—</span>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td style="padding:.3rem .5rem;font-size:.82rem;white-space:nowrap">
                                                     <?= date('d-m-Y H:i', strtotime($lip['first_seen'])) ?>

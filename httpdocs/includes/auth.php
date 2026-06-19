@@ -126,6 +126,39 @@ function getClientIp(): string
 }
 
 /**
+ * Zoek ISP- en mobiel-info op voor een IP-adres via ip-api.com (gratis, 45 req/min).
+ * Resultaten worden gecached in de login_ips tabel.
+ *
+ * @return array{isp: string, is_mobile: int}|null
+ */
+function lookupIpInfo(string $ip): ?array
+{
+    // Sla localhost en private IP's over
+    if ($ip === '127.0.0.1' || $ip === '::1' || str_starts_with($ip, '10.') || str_starts_with($ip, '192.168.') || str_starts_with($ip, '172.')) {
+        return null;
+    }
+
+    $url = 'http://ip-api.com/json/' . urlencode($ip) . '?fields=isp,mobile';
+    $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+    $json = @file_get_contents($url, false, $ctx);
+
+    if ($json === false) {
+        error_log("IP lookup failed for {$ip}");
+        return null;
+    }
+
+    $data = json_decode($json, true);
+    if (!is_array($data) || ($data['status'] ?? '') === 'fail') {
+        return null;
+    }
+
+    return [
+        'isp'       => $data['isp'] ?? '',
+        'is_mobile' => !empty($data['mobile']) ? 1 : 0,
+    ];
+}
+
+/**
  * Registreer het IP van de huidige login en bepaal of de gebruiker
  * geblokkeerd moet worden voor het bekijken van video's.
  *
@@ -194,8 +227,14 @@ function trackLoginIp(int $userId): bool
     }
 
     // Registreer nieuw IP
-    db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
-        ->execute([$userId, $ip]);
+    $ipInfo = lookupIpInfo($ip);
+    if ($ipInfo) {
+        db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
+            ->execute([$userId, $ip, $ipInfo['isp'], $ipInfo['is_mobile']]);
+    } else {
+        db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
+            ->execute([$userId, $ip]);
+    }
     return false;
 }
 
@@ -250,7 +289,7 @@ function resetLoginIps(int $userId): void
 function getUserLoginIps(int $userId): array
 {
     $stmt = db()->prepare(
-        'SELECT ip_address, first_seen, last_seen FROM login_ips WHERE user_id = ? ORDER BY first_seen DESC'
+        'SELECT ip_address, first_seen, last_seen, isp, is_mobile FROM login_ips WHERE user_id = ? ORDER BY first_seen DESC'
     );
     $stmt->execute([$userId]);
     return $stmt->fetchAll();

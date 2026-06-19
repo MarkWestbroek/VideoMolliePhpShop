@@ -162,6 +162,8 @@ CREATE TABLE IF NOT EXISTS `login_ips` (
     `ip_address`  VARCHAR(45)       NOT NULL COMMENT 'IPv4 of IPv6',
     `first_seen`  DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `last_seen`   DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `isp`         VARCHAR(100)      DEFAULT NULL COMMENT 'Internetprovider',
+    `is_mobile`   TINYINT(1)        DEFAULT NULL COMMENT 'Mobiele verbinding?',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_user_ip` (`user_id`, `ip_address`),
     CONSTRAINT `fk_lips_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
