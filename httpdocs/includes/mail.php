@@ -155,4 +155,18 @@ function sendPurchaseConfirmation(int $purchaseId): void
         . "Met vriendelijke groet,\r\nHB Foto & Video";
 
     sendMail($p['email'], $subject, $body);
+
+    // Stuur ook een notificatie naar alle admins
+    $adminSubject = 'Nieuwe aankoop — HB Foto & Video';
+    $adminBody    = "Hallo,\r\n\r\n"
+        . "Er is zojuist een aankoop gedaan.\r\n\r\n"
+        . "Klant : {$p['name']} ({$p['email']})\r\n"
+        . "Video : {$p['title']}\r\n"
+        . "Bedrag: € " . number_format((float) $p['amount'], 2, ',', '.') . "\r\n\r\n"
+        . "— HB Foto & Video (automatisch bericht)";
+
+    $admins = db()->query('SELECT email FROM users WHERE is_admin = 1')->fetchAll();
+    foreach ($admins as $admin) {
+        sendMail($admin['email'], $adminSubject, $adminBody);
+    }
 }

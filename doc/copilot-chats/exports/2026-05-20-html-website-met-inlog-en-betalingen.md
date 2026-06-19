@@ -2,7 +2,7 @@
 
 - **Datum**: 2026-05-20 22:28
 - **Sessie-ID**: `24398d1e-49e5-4820-a77d-9a6318dca082`
-- **Berichten**: 207
+- **Berichten**: 217
 
 ---
 
@@ -4072,5 +4072,218 @@ Klaar! Hier is het overzicht van alle drie features:
 1. **Voer de SQL migratie uit:**  in phpMyAdmin
 2. **Deploy** alle gewijzigde bestanden
 3. **Test**: bekijk een video als gebruiker → admin ziet 🔴 stream + view count + bekeken lijst
+
+---
+
+## 🧑 User
+
+Cool, dat lijkt goed te werken. Nog een vraag.
+
+Kunnen we een tabel verkoop-overzicht krijgen, als volgt.
+
+|              | € 10 | € 5| € ... | totaal |
+| video 1 |    2   |        |       | 20       |
+| video 2 |    1   |  1    |       | 15       |
+| video 3 |         |  2    |       | 10       |
+| -------  |          |        |      | ----+   |
+|             |    3   |  3    |       | 45       |
+
+Dus alle verschillende video's in de regels. Alle verschillende mogelijke bedragen in de kolommen, en totalen horizontaal en verticaal en rechtsonder grand total.
+
+---
+
+## 🤖 Assistant
+
+
+
+<details>
+<summary><em>Read index.php, lines 1 to 20</em> (+4 meer)</summary>
+
+- Read index.php, lines 1 to 20
+- Searched for text `action=purchases` (`**/admin/index.php`), 1 result
+- Read index.php, lines 255 to 280
+- Searched for text `action === 'purchases'` (`**/admin/index.php`), 3 results
+- Read index.php, lines 228 to 260
+</details>
+
+
+Nu de navigatietab toevoegen:
+Nu de view toevoegen — ik zoek het einde van de purchases sectie:
+
+*Searched for text `endif.*purchases` (`**/admin/index.php`), no results · Read index.php, lines 1 to 680 · Read index.php, lines 1 to 685 · Searched for text `require_once.*footer` (`**/admin/index.php`), 1 result*
+
+
+
+<details>
+<summary><em>Searched for text `endif.*purchases` (`**/admin/index.php`), no results</em> (+4 meer)</summary>
+
+- Searched for text `endif.*purchases` (`**/admin/index.php`), no results
+- Read index.php, lines 1 to 680
+- Read index.php, lines 1 to 685
+- Searched for text `require_once.*footer` (`**/admin/index.php`), 1 result
+- Read index.php, lines 680 to 696
+</details>
+
+
+
+
+*Checked index.php, no problems found*
+
+Klaar! De pivot-tabel is toegevoegd als een nieuwe tab **"Overzicht"** in het admin-menu.
+
+### Wat je ziet:
+
+| Video | € 10 | € 5 | ... | Totaal |
+|---|---|---|---|---|
+| Video 1 | 2 | — | | € 20,00 |
+| Video 2 | 1 | 1 | | € 15,00 |
+| **Aantal** | 3 | 1 | | 4 |
+| **Omzet** | | | | € 35,00 |
+
+- **Rijen:** alle video's met betaalde aankopen
+- **Kolommen:** elk uniek bedrag dat ooit betaald is (dynamisch)
+- **Cellen:** aantal aankopen van die video voor dat bedrag
+- **Rijtotalen:** omzet per video
+- **Voettekst:** totaal aantallen per bedrag + grand total omzet
+
+Alleen betalingen met status "paid" worden meegeteld. De kolommen worden automatisch bepaald op basis van wat er in de database staat — geen hardcoded bedragen.
+
+---
+
+## 🧑 User
+
+ik zie de aantallen nog niet. alleen streepjes. Wel de totalen
+
+---
+
+## 🤖 Assistant
+
+Het probleem is PHP array keys: `(float) 10.0` wordt `(int) 10`, terwijl `fetchAll` strings als `"10.00"` teruggeeft. Die matchen niet. Oplossing: string keys gebruiken.
+Nu de pivot-bouw aanpassen naar string keys:
+Ook de kolom-headers moeten de string naar float casten voor weergave:
+
+*Searched for text `\$colTotals\[\$amt\]` (`**/admin/index.php`), 3 results · Checked index.php, no problems found*
+
+
+
+---
+
+## 🧑 User
+
+kun je nog de aantallen per prijsklasse in de onderste rij totaliseren?
+
+---
+
+## 🤖 Assistant
+
+De footerrij met "Aantal" totaliseert al per kolom. Mogelijk ziet hij die niet door hetzelfde string-key probleem. Ik check en fix:
+
+*Read index.php, lines 278 to 295 · Read index.php, lines 720 to 740*
+
+De footerrij **"Aantal"** doet precies dat — hij totaliseert per prijsklasse. Met de string-key fix van net zou die nu moeten werken.
+
+Hier is de structuur van de footer:
+
+```
+         | € 10 | € 5 | Totaal
+---------|------|-----|-------
+Aantal   |   3  |  1  |   4    ← totalen per prijsklasse
+Omzet    |      |     | € 35,00
+```
+
+Als de "Aantal" rij nog `—` toont na deploy, dan is de string-key fix nog niet op de server. Deploy het laatste bestand (`admin/index.php`) opnieuw en ververs de pagina — dan zouden zowel de cellen als de footerrij gevuld moeten zijn.
+
+---
+
+## 🧑 User
+
+excuus, ik zie ze al
+
+---
+
+## 🤖 Assistant
+
+Geen probleem, fijn dat het werkt! 🎉
+
+---
+
+## 🧑 User
+
+zouden we ook een mailbevestiging kunnen sturen naar de klant na een aankoop?
+
+De tekst zou zoiets moeten zijn als:
+
+Bedankt voor uw aankoop van <video x>.
+
+U kunt de video via <deze link> bekijken.
+
+HB Foto
+
+---
+
+## 🤖 Assistant
+
+
+
+*Searched for files matching `**/payment/webhook*`, 1 match · Read webhook.php, lines 1 to 1 · Read webhook.php · Read mail.php, lines 1 to 50*
+
+**Stap 1: `includes/mail.php` — aankoopbevestiging functie toevoegen**
+
+*Read mail.php, lines 1 to 100 · Read mail.php, lines 100 to 125*
+
+
+
+
+*Searched for text `db\.php` (`**/includes/mail.php`), no results*
+
+`mail.php` mist `require_once` voor `db.php`:
+Ook de link fixen — moet `video_id` gebruiken, niet `purchase_id`:
+**Stap 2: `webhook.php` — aankoopbevestiging sturen**
+**Stap 3: admin/index.php — bevestiging bij admin refresh_payment**
+
+*Searched for text `newStatus === 'paid'` (`**/admin/index.php`), 2 results · Read index.php, lines 120 to 135*
+
+
+
+*Searched for text `newStatus === 'paid'` (`**/admin/index.php`), 2 results · Read index.php, lines 120 to 135*
+
+
+
+
+*Read index.php, lines 172 to 195*
+
+
+
+
+*Checked mail.php, webhook.php, index.php, no problems found*
+
+Klaar! De klant ontvangt nu deze e-mail bij een geslaagde betaling:
+
+```
+Van: HB Foto & Video
+Onderwerp: Aankoopbevestiging — HB Foto & Video
+
+Beste [naam],
+
+Bedankt voor je aankoop van "[video titel]"!
+
+Je kunt de video bekijken via deze link:
+https://hbfoto.nl/members/watch.php?id=42
+
+Veel kijkplezier!
+
+Met vriendelijke groet,
+HB Foto & Video
+```
+
+### Wanneer wordt de mail verstuurd?
+
+| Trigger | Bestand |
+|---|---|
+| Mollie webhook (automatisch) | `payment/webhook.php` |
+| Admin → Ververs-knop | `admin/index.php` (refresh_payment) |
+| Admin → Annuleer-knop (als cancel niet lukt maar status wél paid is) | `admin/index.php` (cancel_payment) |
+
+De mail wordt **één keer** verstuurd — alleen bij de definitieve overgang naar "paid" (`rowCount() > 0`).
 
 ---
