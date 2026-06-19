@@ -385,13 +385,30 @@ if ($action === 'purchases') {
 
 $salesOverview = null;
 if ($action === 'sales_overview') {
+    $salesEventFilter = $_GET['sales_event'] ?? '';
+    $salesEventJoin   = '';
+    $salesEventWhere  = '';
+    $salesEventParams = [];
+    if ($salesEventFilter !== '') {
+        $salesEventJoin  = ' JOIN events ev ON ev.id = v.event_id';
+        $salesEventWhere = ' AND v.event_id = ?';
+        $salesEventParams[] = (int) $salesEventFilter;
+    }
+
     // Alle unieke bedragen (kolommen) — aflopend sorteren
-    $amounts = db()->query(
-        "SELECT DISTINCT CAST(amount AS CHAR) FROM purchases WHERE status = 'paid' ORDER BY amount DESC"
-    )->fetchAll(\PDO::FETCH_COLUMN, 0);
+    $amountsStmt = db()->prepare(
+        "SELECT DISTINCT CAST(p.amount AS CHAR)
+         FROM purchases p
+         JOIN videos v ON v.id = p.video_id
+         {$salesEventJoin}
+         WHERE p.status = 'paid' AND v.is_test = 0{$salesEventWhere}
+         ORDER BY p.amount DESC"
+    );
+    $amountsStmt->execute($salesEventParams);
+    $amounts = $amountsStmt->fetchAll(\PDO::FETCH_COLUMN, 0);
 
     // Per video, per bedrag: aantal aankopen + totaalopbrengst
-    $rows = db()->query(
+    $rowsStmt = db()->prepare(
         "SELECT v.id, v.title,
                 CAST(p.amount AS CHAR) AS amount_str,
                 p.amount,
@@ -399,10 +416,13 @@ if ($action === 'sales_overview') {
                 SUM(p.amount) AS subtotal
          FROM purchases p
          JOIN videos v ON v.id = p.video_id
-         WHERE p.status = 'paid' AND v.is_test = 0
+         {$salesEventJoin}
+         WHERE p.status = 'paid' AND v.is_test = 0{$salesEventWhere}
          GROUP BY v.id, v.title, amount_str, p.amount
          ORDER BY v.title"
-    )->fetchAll();
+    );
+    $rowsStmt->execute($salesEventParams);
+    $rows = $rowsStmt->fetchAll();
 
     // Bouw pivot: video_id => [ title, amounts => [amount => count], row_total ]
     $pivot = [];
@@ -692,6 +712,7 @@ elseif ($action === 'add_video'): ?>
     var priceGrp   = document.getElementById('price-group-add');
     var vimeoInp   = document.getElementById('vimeo_id-add');
     var fileInp    = document.getElementById('filename');
+    var fileReq    = document.getElementById('file-required-add');
     function toggle() {
         var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
@@ -702,6 +723,7 @@ elseif ($action === 'add_video'): ?>
         inp.min      = gratis ? '0' : '0.01';
         req.style.display = (gratis || hasStaffel) ? 'none' : '';
         fileInp.required = !hasVimeo;
+        fileReq.style.display = hasVimeo ? 'none' : '';
     }
     chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
@@ -781,7 +803,7 @@ elseif ($action === 'edit_video' && $video): ?>
         </div>
 
         <div class="form-group">
-            <label for="filename">Bestandsnaam <span style="color:var(--danger)">*</span></label>
+            <label for="filename">Bestandsnaam <span id="file-required-edit" style="color:var(--danger)">*</span></label>
             <input type="text" id="filename" name="filename" required
                    value="<?= htmlspecialchars($_POST['filename'] ?? $video['filename'], ENT_QUOTES, 'UTF-8') ?>">
         </div>
@@ -826,6 +848,7 @@ elseif ($action === 'edit_video' && $video): ?>
     var priceGrp   = document.getElementById('price-group-edit');
     var vimeoInp   = document.getElementById('vimeo_id-edit');
     var fileInp    = document.getElementById('filename');
+    var fileReq    = document.getElementById('file-required-edit');
     function toggle() {
         var gratis     = chk.checked;
         var hasStaffel = sel.value !== '';
@@ -836,6 +859,7 @@ elseif ($action === 'edit_video' && $video): ?>
         inp.min      = gratis ? '0' : '0.01';
         req.style.display = (gratis || hasStaffel) ? 'none' : '';
         fileInp.required = !hasVimeo;
+        fileReq.style.display = hasVimeo ? 'none' : '';
     }
     chk.addEventListener('change', toggle);
     sel.addEventListener('change', toggle);
@@ -1005,6 +1029,22 @@ elseif ($action === 'sales_overview' && $salesOverview): ?>
 <div class="page-header">
     <h1>Verkoopoverzicht</h1>
     <span class="text-muted" style="font-size:.9rem">Aantallen betaalde aankopen per video × bedrag</span>
+</div>
+
+<!-- Filterbalk -->
+<div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+    <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:var(--text-muted);">
+        Event:
+        <select class="filter-drop" data-param="sales_event" style="padding:.3rem .5rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;font-size:.85rem;">
+            <option value="" <?= $salesEventFilter === '' ? 'selected' : '' ?>>Alle events</option>
+            <?php foreach ($events as $ev): ?>
+                <option value="<?= (int) $ev['id'] ?>" <?= $salesEventFilter === (string) $ev['id'] ? 'selected' : '' ?>><?= htmlspecialchars($ev['naam'], ENT_QUOTES, 'UTF-8') ?></option>
+            <?php endforeach; ?>
+        </select>
+    </label>
+    <?php if ($salesEventFilter !== ''): ?>
+        <a href="?action=sales_overview" class="btn btn-sm btn-secondary">Wis filter</a>
+    <?php endif; ?>
 </div>
 
 <?php if (empty($salesOverview['pivot'])): ?>

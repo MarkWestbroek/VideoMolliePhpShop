@@ -23,7 +23,7 @@ if ($videoId <= 0) {
 }
 
 // Video ophalen
-$stmt = db()->prepare('SELECT id, title, description, event_id, vimeo_id FROM videos WHERE id = ? AND active = 1 AND is_test = 0 LIMIT 1');
+$stmt = db()->prepare('SELECT id, title, description, event_id, vimeo_id FROM videos WHERE id = ? AND active = 1' . ($user['is_admin'] ? '' : ' AND is_test = 0') . ' LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
