@@ -245,19 +245,20 @@ $salesOverview = null;
 if ($action === 'sales_overview') {
     // Alle unieke bedragen (kolommen) — aflopend sorteren
     $amounts = db()->query(
-        "SELECT DISTINCT amount FROM purchases WHERE status = 'paid' ORDER BY amount DESC"
+        "SELECT DISTINCT CAST(amount AS CHAR) FROM purchases WHERE status = 'paid' ORDER BY amount DESC"
     )->fetchAll(\PDO::FETCH_COLUMN, 0);
 
     // Per video, per bedrag: aantal aankopen + totaalopbrengst
     $rows = db()->query(
         "SELECT v.id, v.title,
+                CAST(p.amount AS CHAR) AS amount_str,
                 p.amount,
                 COUNT(*) AS cnt,
                 SUM(p.amount) AS subtotal
          FROM purchases p
          JOIN videos v ON v.id = p.video_id
          WHERE p.status = 'paid'
-         GROUP BY v.id, v.title, p.amount
+         GROUP BY v.id, v.title, amount_str, p.amount
          ORDER BY v.title"
     )->fetchAll();
 
@@ -272,7 +273,7 @@ if ($action === 'sales_overview') {
                 'total'   => 0.0,
             ];
         }
-        $amt = (float) $r['amount'];
+        $amt = $r['amount_str'];
         $pivot[$vid]['amounts'][$amt] = (int) $r['cnt'];
         $pivot[$vid]['total'] += (float) $r['subtotal'];
     }
