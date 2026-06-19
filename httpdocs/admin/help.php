@@ -88,6 +88,32 @@ require_once __DIR__ . '/../includes/header.php';
             Gebruik testvideo's om nieuwe functionaliteit uit te proberen zonder
             dat klanten het zien.
         </p>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Video's hosten op Vimeo (alternatief)</h3>
+        <p>Naast lokale video's kun je video's ook via <strong>Vimeo</strong> (Pro) hosten.
+           Dit is handig voor lange of grote video's, of als je extra beveiliging wilt.</p>
+        <h4 style="font-size:.95rem;margin-top:1rem;">Vimeo instellen</h4>
+        <ol>
+            <li>Upload de video naar je Vimeo-account (Pro vereist voor domeinrestrictie).</li>
+            <li>Ga in Vimeo naar de video-instellingen → <strong>Privacy</strong>:</li>
+            <ul>
+                <li>Zet "Waar kan deze video worden ingesloten?" op <strong>Alleen op specifieke domeinen</strong></li>
+                <li>Voeg <strong>hbfoto.nl</strong> toe als toegestaan domein</li>
+                <li>Zet "Toon deze video op Vimeo.com" uit</li>
+            </ul>
+            <li>Kopieer het <strong>video-ID</strong> uit de Vimeo-URL (het getal achter <code>vimeo.com/</code>).</li>
+        </ol>
+        <h4 style="font-size:.95rem;margin-top:1rem;">In de site koppelen</h4>
+        <ol>
+            <li>Ga naar <strong>Beheer &rarr; Video's &rarr; + Video toevoegen</strong> (of Bewerken).</li>
+            <li>Vul het <strong>Vimeo ID</strong> in.</li>
+            <li>Het bestandsnaamveld mag je leeg laten — de video wordt dan via Vimeo gestreamd.</li>
+            <li>Klik <strong>Opslaan</strong>.</li>
+        </ol>
+        <p class="text-muted" style="font-size:.9rem;">
+            Lokale video (bestandsnaam ingevuld) en Vimeo (Vimeo ID ingevuld) kunnen
+            niet tegelijk. Kies één van de twee.
+        </p>
     </section>
 
     <!-- ============================================================ -->

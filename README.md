@@ -13,6 +13,7 @@ PHP video streaming platform met Mollie-betalingen, staffelprijzen, event-toegan
 - **Video-weergaven tracking** — bijgehouden wie wanneer welke video bekijkt
 - **Streaming-detectie** — admin ziet wie er op dit moment een video streamt
 - **24-uurs sessies** — gebruikers en admins blijven 24 uur ingelogd
+- **Vimeo-integratie** — optioneel: video's hosten op Vimeo Pro met domeinrestrictie op `hbfoto.nl`
 - **Verdachte registratie-detectie** — admins krijgen notificatie bij bot-achtige accounts
 - **Admin dashboard** — video CRUD, gebruikersbeheer, verkoopoverzicht, Mollie betalingsbeheer
 

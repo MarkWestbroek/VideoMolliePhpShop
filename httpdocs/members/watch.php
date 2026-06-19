@@ -23,7 +23,7 @@ if ($videoId <= 0) {
 }
 
 // Video ophalen
-$stmt = db()->prepare('SELECT id, title, description, event_id FROM videos WHERE id = ? AND active = 1 AND is_test = 0 LIMIT 1');
+$stmt = db()->prepare('SELECT id, title, description, event_id, vimeo_id FROM videos WHERE id = ? AND active = 1 AND is_test = 0 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
@@ -70,6 +70,15 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <div class="player-wrap">
+    <?php if (!empty($video['vimeo_id'])): ?>
+        <div style="position:relative;padding-top:56.25%;">
+            <iframe src="https://player.vimeo.com/video/<?= htmlspecialchars($video['vimeo_id'], ENT_QUOTES, 'UTF-8') ?>?h=&badge=0&autopause=0&player_id=0&app_id=58479"
+                    style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                    frameborder="0" allow="autoplay; fullscreen; picture-in-picture"
+                    allowfullscreen title="<?= htmlspecialchars($video['title'], ENT_QUOTES, 'UTF-8') ?>">
+            </iframe>
+        </div>
+    <?php else: ?>
     <video
         controls
         controlsList="nodownload noremoteplayback"
@@ -82,6 +91,7 @@ require_once __DIR__ . '/../includes/header.php';
         <source src="<?= BASE_URL ?>/stream.php?id=<?= (int) $video['id'] ?>" type="video/mp4">
         <p>Jouw browser ondersteunt geen HTML5-video.</p>
     </video>
+    <?php endif; ?>
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

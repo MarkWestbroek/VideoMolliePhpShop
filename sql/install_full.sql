@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS `videos` (
     `staffel_id`  INT UNSIGNED  DEFAULT NULL,
     `event_id`    INT UNSIGNED  DEFAULT NULL,
     `filename`    VARCHAR(255)  NOT NULL COMMENT 'Alleen bestandsnaam, bijv. les1.mp4',
+    `vimeo_id`    VARCHAR(50)   DEFAULT NULL COMMENT 'Vimeo video-ID (indien Vimeo-hosted)',
     `thumbnail`   VARCHAR(255)  DEFAULT NULL COMMENT 'Relatief pad vanuit httpdocs/assets/thumbs/',
     `active`      TINYINT(1)    NOT NULL DEFAULT 1,
     `is_test`     TINYINT(1)    NOT NULL DEFAULT 0 COMMENT 'Testvideo: onzichtbaar voor klanten, niet in totalen',

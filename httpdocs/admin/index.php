@@ -36,10 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename, is_test) VALUES (?,?,?,?,?,?,?)'
+                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename, vimeo_id, is_test) VALUES (?,?,?,?,?,?,?,?)'
             );
-            $isTest = isset($_POST['is_test']) ? 1 : 0;
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $isTest]);
+            $vimeoId  = trim($_POST['vimeo_id'] ?? '') !== '' ? trim($_POST['vimeo_id']) : null;
+            $isTest   = isset($_POST['is_test']) ? 1 : 0;
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $isTest]);
             $message = 'Video toegevoegd.';
             $action  = 'dashboard';
         }
@@ -65,10 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, active=?, is_test=? WHERE id=?'
+                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, vimeo_id=?, active=?, is_test=? WHERE id=?'
             );
-            $isTest = isset($_POST['is_test']) ? 1 : 0;
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $active, $isTest, $id]);
+            $vimeoId  = trim($_POST['vimeo_id'] ?? '') !== '' ? trim($_POST['vimeo_id']) : null;
+            $isTest   = isset($_POST['is_test']) ? 1 : 0;
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $active, $isTest, $id]);
             $message = 'Video bijgewerkt.';
             $action  = 'dashboard';
         }
@@ -658,6 +660,14 @@ elseif ($action === 'add_video'): ?>
         </div>
 
         <div class="form-group">
+            <label for="vimeo_id-add">Vimeo ID (optioneel)</label>
+            <input type="text" id="vimeo_id-add" name="vimeo_id" maxlength="50"
+                   value="<?= htmlspecialchars($_POST['vimeo_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                   placeholder="Laat leeg voor lokale video">
+            <p class="form-hint">Als je een Vimeo ID invult, wordt de video via Vimeo gestreamd i.p.v. lokaal. Laat het bestandsnaamveld dan leeg.</p>
+        </div>
+
+        <div class="form-group">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
                 <input type="checkbox" id="is_test-add" name="is_test" value="1"
                        <?= isset($_POST['is_test']) ? 'checked' : '' ?>>
@@ -768,6 +778,14 @@ elseif ($action === 'edit_video' && $video): ?>
             <label for="filename">Bestandsnaam <span style="color:var(--danger)">*</span></label>
             <input type="text" id="filename" name="filename" required
                    value="<?= htmlspecialchars($_POST['filename'] ?? $video['filename'], ENT_QUOTES, 'UTF-8') ?>">
+        </div>
+
+        <div class="form-group">
+            <label for="vimeo_id-edit">Vimeo ID (optioneel)</label>
+            <input type="text" id="vimeo_id-edit" name="vimeo_id" maxlength="50"
+                   value="<?= htmlspecialchars($_POST['vimeo_id'] ?? $video['vimeo_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                   placeholder="Laat leeg voor lokale video">
+            <p class="form-hint">Als je een Vimeo ID invult, wordt de video via Vimeo gestreamd. Het bestandsnaamveld mag dan leeg zijn.</p>
         </div>
 
         <div class="form-group">
