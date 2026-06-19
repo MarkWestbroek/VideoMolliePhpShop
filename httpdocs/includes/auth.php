@@ -87,10 +87,10 @@ function loginUser(array $user): void
     $_SESSION['is_admin'] = (bool) $user['is_admin'];
 
     // IP-tracking: registreer huidige IP en bepaal of video-toegang geblokkeerd moet worden
-    // Admins zijn uitgezonderd van IP-tracking.
+    // Admins worden wel gelogd maar niet aan de limiet onderworpen.
     $isAdmin = (bool) $user['is_admin'];
-    $blocked = $isAdmin ? false : trackLoginIp((int) $user['id']);
-    $_SESSION['viewing_blocked'] = $blocked;
+    $blocked = trackLoginIp((int) $user['id'], !$isAdmin);
+    $_SESSION['viewing_blocked'] = $blocked && !$isAdmin;
 }
 
 /**
@@ -168,15 +168,16 @@ function lookupIpInfo(string $ip): ?array
  *  - Als huidige IP nieuw is en er zijn al IP_TRACK_MAX actieve IP's → blokkade
  *  - Anders: voeg IP toe → geen blokkade
  *
+ * @param bool $enforceLimit Als false, altijd loggen zonder blokkade (voor admins)
  * @return bool true als video-toegang geblokkeerd moet worden
  */
-function trackLoginIp(int $userId): bool
+function trackLoginIp(int $userId, bool $enforceLimit = true): bool
 {
     $ip   = getClientIp();
     $ttl  = IP_TRACK_TTL;
     $expireTime = date('Y-m-d H:i:s', time() - $ttl);
 
-    error_log("Login IP-track start: user {$userId}, huidig IP {$ip}, TTL {$ttl}s");
+    error_log("Login IP-track start: user {$userId}, huidig IP {$ip}, TTL {$ttl}s" . ($enforceLimit ? '' : ' (admin, geen limiet)'));
 
     // Verwijder verlopen IP's
     db()->prepare('DELETE FROM login_ips WHERE user_id = ? AND last_seen < ?')
@@ -193,7 +194,20 @@ function trackLoginIp(int $userId): bool
         return false;
     }
 
-    // Nieuw IP — tel hoeveel actieve IP's er zijn
+    // Nieuw IP — admin: altijd registreren, geen limiet
+    if (!$enforceLimit) {
+        $ipInfo = lookupIpInfo($ip);
+        if ($ipInfo) {
+            db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
+                ->execute([$userId, $ip, $ipInfo['isp'], $ipInfo['is_mobile']]);
+        } else {
+            db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
+                ->execute([$userId, $ip]);
+        }
+        return false;
+    }
+
+    // Gewone gebruiker: tel bestaande IP's, blokkeer bij overschrijding
     $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
     $stmt->execute([$userId]);
     $cnt = (int) $stmt->fetchColumn();
@@ -226,7 +240,7 @@ function trackLoginIp(int $userId): bool
         return true;
     }
 
-    // Registreer nieuw IP
+    // Registreer nieuw IP (voor admins én onder-limiet gebruikers)
     $ipInfo = lookupIpInfo($ip);
     if ($ipInfo) {
         db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
