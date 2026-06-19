@@ -8,6 +8,12 @@ require_once __DIR__ . '/../includes/events.php';
 
 requireLogin();
 
+// Blokkeer videotoegang voor niet-geverifieerde gebruikers
+if (!isEmailVerified()) {
+    header('Location: ' . BASE_URL . '/members/?error=not_verified');
+    exit;
+}
+
 $user    = currentUser();
 $videoId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 

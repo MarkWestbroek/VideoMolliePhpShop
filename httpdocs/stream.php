@@ -21,6 +21,12 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// 1b. E-mail moet geverifieerd zijn
+if (!isEmailVerified()) {
+    http_response_code(403);
+    exit;
+}
+
 // 2. Video-ID ophalen en valideren
 $videoId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($videoId <= 0) {
