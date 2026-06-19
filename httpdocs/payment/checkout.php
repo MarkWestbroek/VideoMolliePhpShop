@@ -8,6 +8,13 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/events.php';
 
 requireLogin();
+
+// Blokkeer aankopen voor niet-geverifieerde gebruikers
+if (!isEmailVerified()) {
+    header('Location: ' . BASE_URL . '/members/?error=not_verified');
+    exit;
+}
+
 verifyCsrf();
 
 $user    = currentUser();

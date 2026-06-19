@@ -36,6 +36,9 @@ if ($ipStatus['blocked']) {
     exit;
 }
 
+// Melding voor niet-geverifieerde gebruikers die willen kopen
+$notVerifiedError = ($_GET['error'] ?? '') === 'not_verified';
+
 // Bepaal tot welke events deze gebruiker toegang heeft
 $eventIds = getUserEventIds((int) $user['id']);
 
@@ -105,6 +108,13 @@ function berekenStaffelprijs(int $staffelId, int $alGekocht): ?float
 $pageTitle = "Mijn video's — HB Foto & Video";
 require_once __DIR__ . '/../includes/header.php';
 ?>
+
+<?php if ($notVerifiedError): ?>
+    <div class="alert alert-error" style="margin-bottom:1.5rem;">
+        &#9888; Je e-mailadres is nog niet geverifieerd. <strong>Verifieer eerst je e-mail</strong> voordat je een video kunt kopen.<br>
+        <a href="<?= BASE_URL ?>/verify.php?resend=1" style="color:inherit;font-weight:600;text-decoration:underline;">Verificatie-e-mail opnieuw versturen</a>
+    </div>
+<?php endif; ?>
 
 <div class="page-header">
     <h1>Video's</h1>
