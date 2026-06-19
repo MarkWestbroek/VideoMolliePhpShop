@@ -277,8 +277,8 @@ if ($action === 'purchases') {
     $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
     // Unieke waardes voor dropdowns
-    $distinctStatuses = db()->query('SELECT DISTINCT status FROM purchases ORDER BY status')->fetchAll(\PDO::FETCH_COLUMN, 0);
-    $distinctAmounts  = db()->query('SELECT DISTINCT amount FROM purchases ORDER BY amount DESC')->fetchAll(\PDO::FETCH_COLUMN, 0);
+    $distinctStatuses = db()->query('SELECT DISTINCT status FROM purchases ORDER BY status')->fetchAll(\PDO::FETCH_COLUMN, 0) ?: [];
+    $distinctAmounts  = db()->query('SELECT DISTINCT amount FROM purchases ORDER BY amount DESC')->fetchAll(\PDO::FETCH_COLUMN, 0) ?: [];
 
     // Totaal aantal
     $stmt = db()->prepare(
@@ -711,7 +711,7 @@ elseif ($action === 'edit_video' && $video): ?>
 // ---- Verkopenoverzicht ------------------------------------
 elseif ($action === 'purchases'): 
     // Helper voor sorteerlinks
-    $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page): string {
+    $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page, $statusFilter, $amountFilter): string {
         $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
         $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
         $q      = '?action=purchases&sort=' . $col . '&dir=' . $newDir . '&page=' . $page
