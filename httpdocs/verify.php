@@ -9,6 +9,32 @@ require_once __DIR__ . '/includes/mail.php';
 $message = '';
 $error   = '';
 
+// --- Token verwerken (altijd eerst, ook als al ingelogd) ---
+$rawToken = $_GET['token'] ?? '';
+
+if ($rawToken !== '') {
+    $tokenHash = hash('sha256', $rawToken);
+
+    $stmt = db()->prepare(
+        'SELECT id, email, name, email_verified_at FROM users
+         WHERE verification_token = ? LIMIT 1'
+    );
+    $stmt->execute([$tokenHash]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        $error = 'Ongeldige of verlopen verificatielink.';
+    } elseif ($user['email_verified_at'] !== null) {
+        $message = 'Je e-mailadres is al geverifieerd! Je kunt <a href="' . BASE_URL . '/login.php">inloggen</a>.';
+    } else {
+        db()->prepare(
+            'UPDATE users SET email_verified_at = NOW(), verification_token = NULL WHERE id = ?'
+        )->execute([$user['id']]);
+
+        $message = 'E-mailadres bevestigd! Je kunt nu <a href="' . BASE_URL . '/members/">video\'s bekijken</a>.';
+    }
+}
+
 // --- Resend verification email ---
 if (isLoggedIn() && isset($_GET['resend'])) {
     $user = currentUser();
@@ -36,42 +62,9 @@ if (isLoggedIn() && isset($_GET['resend'])) {
     }
 }
 
-// Al ingelogd en geen resend? Stuur door.
-if (isLoggedIn() && !isset($_GET['resend'])) {
-    header('Location: ' . BASE_URL . '/members/');
-    exit;
-}
-
-$rawToken = $_GET['token'] ?? '';
-
-if ($rawToken === '') {
-    // Geen token en geen resend — alleen een pagina tonen als er geen bericht is
-    if ($message === '' && $error === '') {
-        $error = 'Geen verificatietoken opgegeven.';
-    }
-} else {
-    $tokenHash = hash('sha256', $rawToken);
-
-    // Zoek gebruiker met deze token
-    $stmt = db()->prepare(
-        'SELECT id, email, name, email_verified_at FROM users
-         WHERE verification_token = ? LIMIT 1'
-    );
-    $stmt->execute([$tokenHash]);
-    $user = $stmt->fetch();
-
-    if (!$user) {
-        $error = 'Ongeldige of verlopen verificatielink.';
-    } elseif ($user['email_verified_at'] !== null) {
-        $message = 'Je e-mailadres is al geverifieerd! Je kunt <a href="' . BASE_URL . '/login.php">inloggen</a>.';
-    } else {
-        // Markeer als geverifieerd
-        db()->prepare(
-            'UPDATE users SET email_verified_at = NOW(), verification_token = NULL WHERE id = ?'
-        )->execute([$user['id']]);
-
-        $message = 'E-mailadres bevestigd! Je kunt nu <a href="' . BASE_URL . '/login.php">inloggen</a>.';
-    }
+// Geen token en geen resend: toon alleen een fout als er geen bericht is
+if ($rawToken === '' && !isset($_GET['resend']) && $message === '' && $error === '') {
+    $error = 'Geen verificatietoken opgegeven.';
 }
 
 $pageTitle = 'E-mail bevestigen — HB Foto & Video';

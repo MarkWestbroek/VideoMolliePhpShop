@@ -332,6 +332,40 @@ if ($action === 'purchases') {
     $purchases = $purchases->fetchAll();
 
     $totalPages = max(1, (int) ceil($total / $perPage));
+
+    // CSV-export: alle gefilterde resultaten zonder paginatie
+    if (isset($_GET['export'])) {
+        $stmt = db()->prepare(
+            "SELECT u.name AS user_name, u.email, v.title AS video_title,
+                    p.amount, p.status, p.created_at, p.paid_at, p.mollie_payment_id
+             FROM purchases p
+             JOIN users  u ON u.id = p.user_id
+             JOIN videos v ON v.id = p.video_id
+             {$where}
+             ORDER BY {$sortCol} {$dir}"
+        );
+        $stmt->execute($params);
+        $all = $stmt->fetchAll();
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="verkopen_' . date('Y-m-d') . '.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['Datum', 'Naam', 'E-mail', 'Video', 'Bedrag', 'Status', 'Betaald op', 'Mollie ID'], ';');
+        foreach ($all as $row) {
+            fputcsv($out, [
+                $row['created_at'],
+                $row['user_name'],
+                $row['email'],
+                $row['video_title'],
+                number_format((float) $row['amount'], 2, ',', '.'),
+                $row['status'],
+                $row['paid_at'] ?? '',
+                $row['mollie_payment_id'] ?? '',
+            ], ';');
+        }
+        fclose($out);
+        exit;
+    }
 }
 
 $salesOverview = null;
@@ -804,6 +838,15 @@ elseif ($action === 'purchases'):
     <input type="hidden" name="action" value="purchases">
     <input type="text" id="search-input" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
     <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
+    <?php
+    $exportUrl = '?action=purchases&export=1'
+        . ($search !== '' ? '&search=' . urlencode($search) : '')
+        . ($statusFilter !== '' ? '&status=' . urlencode($statusFilter) : '')
+        . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '')
+        . ($videoFilter !== '' ? '&video=' . urlencode($videoFilter) : '')
+        . '&sort=' . $sort . '&dir=' . $dir;
+    ?>
+    <a href="<?= $exportUrl ?>" class="btn btn-sm" style="background:#217346;color:#fff;">&#128229; CSV</a>
     <?php if ($search !== '' || $statusFilter !== '' || $amountFilter !== '' || $videoFilter !== ''): ?>
         <a href="?action=purchases" class="btn btn-sm btn-secondary">Wis alle filters</a>
     <?php endif; ?>
