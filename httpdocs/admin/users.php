@@ -91,9 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $search      = trim($_GET['search'] ?? '');
 $sort        = $_GET['sort'] ?? 'last_activity';
 $dir         = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-$roleFilter  = $_GET['role']  ?? '';
-$emailFilter = $_GET['everify'] ?? '';
-$onlineFilter = $_GET['online'] ?? '';
+$roleFilter   = $_GET['role']   ?? '';
+$emailFilter  = $_GET['everify'] ?? '';
+$onlineFilter = $_GET['online']  ?? '';
+$ipFilter     = $_GET['ips']     ?? '';
+$purchFilter  = $_GET['purchases'] ?? '';
 
 $allowedSorts = [
     'last_activity'  => 'u.last_activity',
@@ -135,6 +137,24 @@ if ($onlineFilter === 'streaming') {
 
 $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
+// HAVING-condities voor geaggregeerde kolommen
+$havingConds = [];
+if ($ipFilter === 'none') {
+    $havingConds[] = 'ip_count = 0';
+} elseif ($ipFilter === '1-2') {
+    $havingConds[] = 'ip_count BETWEEN 1 AND 2';
+} elseif ($ipFilter === '3plus') {
+    $havingConds[] = 'ip_count >= 3';
+}
+if ($purchFilter === 'none') {
+    $havingConds[] = 'purchase_count = 0';
+} elseif ($purchFilter === '1-5') {
+    $havingConds[] = 'purchase_count BETWEEN 1 AND 5';
+} elseif ($purchFilter === '6plus') {
+    $havingConds[] = 'purchase_count >= 6';
+}
+$having = $havingConds ? ' HAVING ' . implode(' AND ', $havingConds) : '';
+
 $users = db()->prepare(
     "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
             COUNT(DISTINCT ea.event_id)   AS event_count,
@@ -146,6 +166,7 @@ $users = db()->prepare(
      LEFT JOIN purchases    p  ON p.user_id  = u.id
      {$where}
      GROUP BY u.id
+     {$having}
      ORDER BY {$sortCol} {$dir}"
 );
 $users->execute($params);
@@ -250,7 +271,7 @@ require_once __DIR__ . '/../includes/header.php';
 <form id="search-form" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;" onsubmit="var p=new URLSearchParams(window.location.search);var s=this.search.value.trim();if(s===''){p.delete('search');}else{p.set('search',s);}window.location.search=p.toString();return false;">
     <input type="text" id="search-input" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
     <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
-    <?php if ($search !== '' || $roleFilter !== '' || $emailFilter !== '' || $onlineFilter !== ''): ?>
+    <?php if ($search !== '' || $roleFilter !== '' || $emailFilter !== '' || $onlineFilter !== '' || $ipFilter !== '' || $purchFilter !== ''): ?>
         <a href="?" class="btn btn-sm btn-secondary">Wis filters</a>
     <?php endif; ?>
 </form>
@@ -260,14 +281,16 @@ require_once __DIR__ . '/../includes/header.php';
      ============================================================ -->
 <?php
 // Helper voor sorteerlinks
-$sortLink = function(string $col, string $label) use ($sort, $dir, $search, $roleFilter, $emailFilter, $onlineFilter): string {
+$sortLink = function(string $col, string $label) use ($sort, $dir, $search, $roleFilter, $emailFilter, $onlineFilter, $ipFilter, $purchFilter): string {
     $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
     $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
     $q      = '?sort=' . $col . '&dir=' . $newDir
             . ($search !== '' ? '&search=' . urlencode($search) : '')
             . ($roleFilter !== '' ? '&role=' . urlencode($roleFilter) : '')
             . ($emailFilter !== '' ? '&everify=' . urlencode($emailFilter) : '')
-            . ($onlineFilter !== '' ? '&online=' . urlencode($onlineFilter) : '');
+            . ($onlineFilter !== '' ? '&online=' . urlencode($onlineFilter) : '')
+            . ($ipFilter !== '' ? '&ips=' . urlencode($ipFilter) : '')
+            . ($purchFilter !== '' ? '&purchases=' . urlencode($purchFilter) : '');
     return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
 };
 ?>
@@ -301,7 +324,14 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
                         <option value="offline" <?= $onlineFilter === 'offline' ? 'selected' : '' ?>>Offline</option>
                     </select>
                 </td>
-                <td></td>
+                <td>
+                    <select class="filter-drop" data-param="ips" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $ipFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="none" <?= $ipFilter === 'none' ? 'selected' : '' ?>>0</option>
+                        <option value="1-2" <?= $ipFilter === '1-2' ? 'selected' : '' ?>>1-2</option>
+                        <option value="3plus" <?= $ipFilter === '3plus' ? 'selected' : '' ?>>3+</option>
+                    </select>
+                </td>
                 <td>
                     <select class="filter-drop" data-param="everify" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
                         <option value="" <?= $emailFilter === '' ? 'selected' : '' ?>>Alle</option>
@@ -310,7 +340,14 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
                     </select>
                 </td>
                 <td></td>
-                <td></td>
+                <td>
+                    <select class="filter-drop" data-param="purchases" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $purchFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="none" <?= $purchFilter === 'none' ? 'selected' : '' ?>>0</option>
+                        <option value="1-5" <?= $purchFilter === '1-5' ? 'selected' : '' ?>>1-5</option>
+                        <option value="6plus" <?= $purchFilter === '6plus' ? 'selected' : '' ?>>6+</option>
+                    </select>
+                </td>
                 <td></td>
                 <td>
                     <select class="filter-drop" data-param="role" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">

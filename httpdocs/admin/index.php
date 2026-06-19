@@ -231,8 +231,9 @@ $staffels  = db()->query('SELECT id, naam FROM staffels ORDER BY naam')->fetchAl
 $events    = db()->query('SELECT id, naam FROM events ORDER BY naam')->fetchAll();
 
 if ($action === 'dashboard') {
-    $dashStatus = $_GET['dash_status'] ?? '';
+    $dashStatus  = $_GET['dash_status']  ?? '';
     $dashStaffel = $_GET['dash_staffel'] ?? '';
+    $dashEvent   = $_GET['dash_event']   ?? '';
 
     $dashWhere = '';
     $dashParams = [];
@@ -243,6 +244,10 @@ if ($action === 'dashboard') {
     if ($dashStaffel !== '') {
         if ($dashStaffel === 'none') { $dashConditions[] = 'v.staffel_id IS NULL'; }
         else { $dashConditions[] = 'v.staffel_id = ?'; $dashParams[] = (int) $dashStaffel; }
+    }
+    if ($dashEvent !== '') {
+        if ($dashEvent === 'none') { $dashConditions[] = 'v.event_id IS NULL'; }
+        else { $dashConditions[] = 'v.event_id = ?'; $dashParams[] = (int) $dashEvent; }
     }
     if ($dashConditions) { $dashWhere = ' WHERE ' . implode(' AND ', $dashConditions); }
 
@@ -449,7 +454,15 @@ if ($action === 'dashboard'): ?>
                         <?php endforeach; ?>
                     </select>
                 </td>
-                <td></td>
+                <td>
+                    <select class="filter-drop" data-param="dash_event" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $dashEvent === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="none" <?= $dashEvent === 'none' ? 'selected' : '' ?>>Openbaar</option>
+                        <?php foreach ($events as $ev): ?>
+                            <option value="<?= (int) $ev['id'] ?>" <?= $dashEvent === (string) $ev['id'] ? 'selected' : '' ?>><?= htmlspecialchars($ev['naam'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
                 <td></td>
                 <td></td>
                 <td>
