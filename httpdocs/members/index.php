@@ -44,7 +44,7 @@ if (empty($eventIds)) {
     $stmt = db()->query(
         'SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id, v.event_id
          FROM videos v
-         WHERE v.active = 1 AND v.event_id IS NULL
+         WHERE v.active = 1 AND v.is_test = 0 AND v.event_id IS NULL
          ORDER BY v.created_at DESC'
     );
 } else {
@@ -52,7 +52,7 @@ if (empty($eventIds)) {
     $stmt = db()->prepare(
         "SELECT v.id, v.title, v.description, v.price, v.thumbnail, v.staffel_id, v.event_id
          FROM videos v
-         WHERE v.active = 1 AND (v.event_id IS NULL OR v.event_id IN ($placeholders))
+         WHERE v.active = 1 AND v.is_test = 0 AND (v.event_id IS NULL OR v.event_id IN ($placeholders))
          ORDER BY v.created_at DESC"
     );
     $stmt->execute($eventIds);

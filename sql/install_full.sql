@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `videos` (
     `filename`    VARCHAR(255)  NOT NULL COMMENT 'Alleen bestandsnaam, bijv. les1.mp4',
     `thumbnail`   VARCHAR(255)  DEFAULT NULL COMMENT 'Relatief pad vanuit httpdocs/assets/thumbs/',
     `active`      TINYINT(1)    NOT NULL DEFAULT 1,
+    `is_test`     TINYINT(1)    NOT NULL DEFAULT 0 COMMENT 'Testvideo: onzichtbaar voor klanten, niet in totalen',
     `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     CONSTRAINT `fk_video_staffel` FOREIGN KEY (`staffel_id`) REFERENCES `staffels`(`id`) ON DELETE SET NULL,

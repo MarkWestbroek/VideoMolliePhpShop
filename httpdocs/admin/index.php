@@ -36,9 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename) VALUES (?,?,?,?,?,?)'
+                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename, is_test) VALUES (?,?,?,?,?,?,?)'
             );
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename]);
+            $isTest = isset($_POST['is_test']) ? 1 : 0;
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $isTest]);
             $message = 'Video toegevoegd.';
             $action  = 'dashboard';
         }
@@ -64,9 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, active=? WHERE id=?'
+                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, active=?, is_test=? WHERE id=?'
             );
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $active, $id]);
+            $isTest = isset($_POST['is_test']) ? 1 : 0;
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $active, $isTest, $id]);
             $message = 'Video bijgewerkt.';
             $action  = 'dashboard';
         }
@@ -272,7 +274,7 @@ if ($action === 'sales_overview') {
                 SUM(p.amount) AS subtotal
          FROM purchases p
          JOIN videos v ON v.id = p.video_id
-         WHERE p.status = 'paid'
+         WHERE p.status = 'paid' AND v.is_test = 0
          GROUP BY v.id, v.title, amount_str, p.amount
          ORDER BY v.title"
     )->fetchAll();
@@ -397,7 +399,9 @@ if ($action === 'dashboard'): ?>
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if ($v['active']): ?>
+                    <?php if ($v['is_test'] ?? 0): ?>
+                        <span style="color:#f39c12;font-weight:600;">Test</span>
+                    <?php elseif ($v['active']): ?>
                         <span class="status-paid">Actief</span>
                     <?php else: ?>
                         <span class="status-inactive">Inactief</span>
@@ -496,6 +500,14 @@ elseif ($action === 'add_video'): ?>
             <input type="text" id="filename" name="filename" required placeholder="les1.mp4"
                    value="<?= htmlspecialchars($_POST['filename'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <p class="form-hint">Alleen de bestandsnaam, zonder pad. Bijv: <code>les1.mp4</code></p>
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="is_test-add" name="is_test" value="1"
+                       <?= isset($_POST['is_test']) ? 'checked' : '' ?>>
+                <span><strong>Testvideo</strong> &mdash; niet zichtbaar voor klanten, telt niet mee in totalen</span>
+            </label>
         </div>
 
         <div style="display:flex;gap:.75rem;">
@@ -608,6 +620,14 @@ elseif ($action === 'edit_video' && $video): ?>
                 <input type="checkbox" name="active" value="1"
                     <?= ($video['active'] ? 'checked' : '') ?>>
                 &nbsp;Actief (zichtbaar voor gebruikers)
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
+                <input type="checkbox" id="is_test-edit" name="is_test" value="1"
+                       <?= (isset($_POST['is_test']) || ($video['is_test'] ?? 0)) ? 'checked' : '' ?>>
+                <span><strong>Testvideo</strong> &mdash; niet zichtbaar voor klanten, telt niet mee in totalen</span>
             </label>
         </div>
 

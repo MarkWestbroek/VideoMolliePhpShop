@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/mail.php';
 
 function isLoggedIn(): bool
 {
@@ -169,6 +170,26 @@ function trackLoginIp(int $userId): bool
     if ($cnt >= IP_TRACK_MAX) {
         // Limiet bereikt: blokkeer video-toegang, voeg IP niet toe
         error_log("Login share blokkade: user {$userId}, nieuw IP {$ip}, al {$cnt} actieve IP's");
+
+        // Stuur notificatie naar admins
+        $stmt = db()->prepare('SELECT name, email FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $blockedUser = $stmt->fetch();
+        if ($blockedUser) {
+            $admins = db()->query('SELECT email FROM users WHERE is_admin = 1')->fetchAll();
+            $subject = 'Gebruiker geblokkeerd — HB Foto & Video';
+            $body    = "Hallo,\r\n\r\n"
+                . "Een gebruiker is geblokkeerd van het bekijken van video's vanwege te veel login-IP's.\r\n\r\n"
+                . "Gebruiker: {$blockedUser['name']} ({$blockedUser['email']}, ID {$userId})\r\n"
+                . "Nieuw IP : {$ip}\r\n"
+                . "Bestaande IP's: {$cnt} (max " . IP_TRACK_MAX . ")\r\n\r\n"
+                . "Beheer gebruikers: " . BASE_URL . "/admin/users.php?user={$userId}\r\n\r\n"
+                . "— HB Foto & Video (automatisch bericht)";
+            foreach ($admins as $admin) {
+                sendMail($admin['email'], $subject, $body);
+            }
+        }
+
         return true;
     }
 

@@ -19,7 +19,7 @@ if ($videoId <= 0) {
 }
 
 // Video ophalen (inclusief staffel en event)
-$stmt = db()->prepare('SELECT id, title, price, staffel_id, event_id FROM videos WHERE id = ? AND active = 1 LIMIT 1');
+$stmt = db()->prepare('SELECT id, title, price, staffel_id, event_id FROM videos WHERE id = ? AND active = 1 AND is_test = 0 LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
