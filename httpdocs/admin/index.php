@@ -441,11 +441,11 @@ if ($action === 'dashboard'): ?>
                 <td></td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <option value="?action=dashboard" <?= $dashStaffel === '' ? 'selected' : '' ?>>Alle</option>
-                        <option value="?action=dashboard&dash_staffel=none" <?= $dashStaffel === 'none' ? 'selected' : '' ?>>Geen staffel</option>
+                    <select class="filter-drop" data-param="dash_staffel" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $dashStaffel === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="none" <?= $dashStaffel === 'none' ? 'selected' : '' ?>>Geen staffel</option>
                         <?php foreach ($staffels as $s): ?>
-                            <option value="?action=dashboard&dash_staffel=<?= (int) $s['id'] ?>" <?= $dashStaffel === (string) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['naam'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= (int) $s['id'] ?>" <?= $dashStaffel === (string) $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['naam'], ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </td>
@@ -453,11 +453,11 @@ if ($action === 'dashboard'): ?>
                 <td></td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <option value="?action=dashboard" <?= $dashStatus === '' ? 'selected' : '' ?>>Alle</option>
-                        <option value="?action=dashboard&dash_status=active" <?= $dashStatus === 'active' ? 'selected' : '' ?>>Actief</option>
-                        <option value="?action=dashboard&dash_status=inactive" <?= $dashStatus === 'inactive' ? 'selected' : '' ?>>Inactief</option>
-                        <option value="?action=dashboard&dash_status=test" <?= $dashStatus === 'test' ? 'selected' : '' ?>>Test</option>
+                    <select class="filter-drop" data-param="dash_status" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $dashStatus === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="active" <?= $dashStatus === 'active' ? 'selected' : '' ?>>Actief</option>
+                        <option value="inactive" <?= $dashStatus === 'inactive' ? 'selected' : '' ?>>Inactief</option>
+                        <option value="test" <?= $dashStatus === 'test' ? 'selected' : '' ?>>Test</option>
                     </select>
                 </td>
                 <td></td>

@@ -88,10 +88,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Alle gebruikers + event-toegangen + aankopen als sub-query tellers
 // "Online" = last_activity binnen de laatste 15 minuten
-$search   = trim($_GET['search'] ?? '');
-$sort     = $_GET['sort'] ?? 'last_activity';
-$dir      = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-$filter   = $_GET['filter'] ?? '';
+$search      = trim($_GET['search'] ?? '');
+$sort        = $_GET['sort'] ?? 'last_activity';
+$dir         = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+$roleFilter  = $_GET['role']  ?? '';
+$emailFilter = $_GET['everify'] ?? '';
+$onlineFilter = $_GET['online'] ?? '';
 
 $allowedSorts = [
     'last_activity'  => 'u.last_activity',
@@ -104,9 +106,8 @@ $allowedSorts = [
 ];
 $sortCol = $allowedSorts[$sort] ?? 'u.last_activity';
 
-$where  = '';
-$params = [];
 $conditions = [];
+$params     = [];
 
 if ($search !== '') {
     $conditions[] = '(u.name LIKE ? OR u.email LIKE ?)';
@@ -114,21 +115,25 @@ if ($search !== '') {
     $params[] = $like;
     $params[] = $like;
 }
-if ($filter === 'online') {
-    $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
-} elseif ($filter === 'verified') {
-    $conditions[] = 'u.email_verified_at IS NOT NULL';
-} elseif ($filter === 'unverified') {
-    $conditions[] = 'u.email_verified_at IS NULL';
-} elseif ($filter === 'admin') {
+if ($roleFilter === 'admin') {
     $conditions[] = 'u.is_admin = 1';
-} elseif ($filter === 'blocked') {
-    $conditions[] = 'COALESCE((SELECT COUNT(*) FROM login_ips li WHERE li.user_id = u.id AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY)), 0) >= ' . IP_TRACK_MAX;
+} elseif ($roleFilter === 'user') {
+    $conditions[] = 'u.is_admin = 0';
+}
+if ($emailFilter === 'verified') {
+    $conditions[] = 'u.email_verified_at IS NOT NULL';
+} elseif ($emailFilter === 'unverified') {
+    $conditions[] = 'u.email_verified_at IS NULL';
+}
+if ($onlineFilter === 'streaming') {
+    $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
+} elseif ($onlineFilter === 'online') {
+    $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
+} elseif ($onlineFilter === 'offline') {
+    $conditions[] = '(u.last_activity IS NULL OR u.last_activity < DATE_SUB(NOW(), INTERVAL 15 MINUTE))';
 }
 
-if ($conditions) {
-    $where = ' WHERE ' . implode(' AND ', $conditions);
-}
+$where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
 $users = db()->prepare(
     "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
@@ -242,19 +247,11 @@ require_once __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
-<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
-    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
-    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:#2a2a2a;color:#ddd;">
-        <option value="">Alle gebruikers</option>
-        <option value="online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
-        <option value="admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admins</option>
-        <option value="verified" <?= $filter === 'verified' ? 'selected' : '' ?>>E-mail geverifieerd</option>
-        <option value="unverified" <?= $filter === 'unverified' ? 'selected' : '' ?>>E-mail niet geverifieerd</option>
-        <option value="blocked" <?= $filter === 'blocked' ? 'selected' : '' ?>>Geblokkeerd (IP's)</option>
-    </select>
-    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-    <?php if ($search !== '' || $filter !== ''): ?>
-        <a href="?" class="btn btn-sm btn-secondary">Wis</a>
+<form id="search-form" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;" onsubmit="var p=new URLSearchParams(window.location.search);var s=this.search.value.trim();if(s===''){p.delete('search');}else{p.set('search',s);}window.location.search=p.toString();return false;">
+    <input type="text" id="search-input" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
+    <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
+    <?php if ($search !== '' || $roleFilter !== '' || $emailFilter !== '' || $onlineFilter !== ''): ?>
+        <a href="?" class="btn btn-sm btn-secondary">Wis filters</a>
     <?php endif; ?>
 </form>
 
@@ -263,10 +260,14 @@ require_once __DIR__ . '/../includes/header.php';
      ============================================================ -->
 <?php
 // Helper voor sorteerlinks
-$sortLink = function(string $col, string $label) use ($sort, $dir, $search, $filter): string {
+$sortLink = function(string $col, string $label) use ($sort, $dir, $search, $roleFilter, $emailFilter, $onlineFilter): string {
     $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
     $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
-    $q      = '?sort=' . $col . '&dir=' . $newDir . ($search !== '' ? '&search=' . urlencode($search) : '') . ($filter !== '' ? '&filter=' . urlencode($filter) : '');
+    $q      = '?sort=' . $col . '&dir=' . $newDir
+            . ($search !== '' ? '&search=' . urlencode($search) : '')
+            . ($roleFilter !== '' ? '&role=' . urlencode($roleFilter) : '')
+            . ($emailFilter !== '' ? '&everify=' . urlencode($emailFilter) : '')
+            . ($onlineFilter !== '' ? '&online=' . urlencode($onlineFilter) : '');
     return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
 };
 ?>
@@ -292,25 +293,30 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $fil
                 <td></td>
                 <td></td>
                 <td></td>
-                <td></td>
+                <td>
+                    <select class="filter-drop" data-param="online" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $onlineFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="streaming" <?= $onlineFilter === 'streaming' ? 'selected' : '' ?>>Stream</option>
+                        <option value="online" <?= $onlineFilter === 'online' ? 'selected' : '' ?>>Online</option>
+                        <option value="offline" <?= $onlineFilter === 'offline' ? 'selected' : '' ?>>Offline</option>
+                    </select>
+                </td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <?php $ubase = '?sort=' . $sort . '&dir=' . $dir . ($search !== '' ? '&search=' . urlencode($search) : ''); ?>
-                        <option value="<?= $ubase ?>" <?= $filter === '' ? 'selected' : '' ?>>Alle</option>
-                        <option value="<?= $ubase ?>&filter=verified" <?= $filter === 'verified' ? 'selected' : '' ?>>Geverifieerd</option>
-                        <option value="<?= $ubase ?>&filter=unverified" <?= $filter === 'unverified' ? 'selected' : '' ?>>Niet geverifieerd</option>
+                    <select class="filter-drop" data-param="everify" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $emailFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="verified" <?= $emailFilter === 'verified' ? 'selected' : '' ?>>Geverifieerd</option>
+                        <option value="unverified" <?= $emailFilter === 'unverified' ? 'selected' : '' ?>>Niet</option>
                     </select>
                 </td>
                 <td></td>
                 <td></td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <option value="<?= $ubase ?>" <?= $filter === '' ? 'selected' : '' ?>>Alle</option>
-                        <option value="<?= $ubase ?>&filter=admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admin</option>
-                        <option value="<?= $ubase ?>&filter=online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
-                        <option value="<?= $ubase ?>&filter=blocked" <?= $filter === 'blocked' ? 'selected' : '' ?>>Geblokkeerd</option>
+                    <select class="filter-drop" data-param="role" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $roleFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <option value="admin" <?= $roleFilter === 'admin' ? 'selected' : '' ?>>Admin</option>
+                        <option value="user" <?= $roleFilter === 'user' ? 'selected' : '' ?>>Gebruiker</option>
                     </select>
                 </td>
                 <td></td>
@@ -650,4 +656,16 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $fil
     </table>
 </div>
 
+<script>
+document.querySelectorAll('.filter-drop').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var params = new URLSearchParams(window.location.search);
+        var param = this.getAttribute('data-param');
+        var val   = this.value;
+        if (val === '') { params.delete(param); }
+        else { params.set(param, val); }
+        window.location.search = params.toString();
+    });
+});
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
