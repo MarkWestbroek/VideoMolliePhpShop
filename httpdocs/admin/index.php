@@ -128,6 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = db()->prepare('UPDATE purchases SET status = ? WHERE id = ?');
                     }
                     $stmt->execute([$newStatus, $purchaseId]);
+
+                    // Stuur aankoopbevestiging bij handmatige overgang naar paid
+                    if ($newStatus === 'paid' && $stmt->rowCount() > 0) {
+                        sendPurchaseConfirmation($purchaseId);
+                    }
+
                     $message = 'Betaling bijgewerkt naar: ' . $newStatus;
                 } catch (\Mollie\Api\Exceptions\ApiException $e) {
                     $error = 'Mollie API-fout: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
@@ -181,6 +187,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmt = db()->prepare('UPDATE purchases SET status = ? WHERE id = ?');
                         }
                         $stmt->execute([$newStatus, $purchaseId]);
+
+                        // Stuur aankoopbevestiging als cancel niet lukte maar status wél paid bleek
+                        if ($newStatus === 'paid' && $stmt->rowCount() > 0) {
+                            sendPurchaseConfirmation($purchaseId);
+                        }
+
                         $message = 'Annuleren niet mogelijk, status opgehaald bij Mollie: ' . $newStatus;
                     } catch (\Mollie\Api\Exceptions\ApiException $e2) {
                         $error = 'Kon status niet ophalen bij Mollie: ' . htmlspecialchars($e2->getMessage(), ENT_QUOTES, 'UTF-8');

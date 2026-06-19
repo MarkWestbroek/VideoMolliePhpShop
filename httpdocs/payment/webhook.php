@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/mail.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Mollie stuurt de betaal-ID via POST
@@ -62,6 +63,16 @@ try {
              WHERE mollie_payment_id = ? AND status != 'paid'"
         );
         $stmt->execute([$paidAt, $paymentId]);
+
+        // Stuur aankoopbevestiging als de betaling nét op 'paid' is gezet
+        if ($stmt->rowCount() > 0) {
+            $stmt2 = db()->prepare('SELECT id FROM purchases WHERE mollie_payment_id = ? LIMIT 1');
+            $stmt2->execute([$paymentId]);
+            $purchaseId = (int) $stmt2->fetchColumn();
+            if ($purchaseId > 0) {
+                sendPurchaseConfirmation($purchaseId);
+            }
+        }
     } else {
         $stmt = db()->prepare(
             "UPDATE purchases

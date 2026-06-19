@@ -8,6 +8,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/PHPMailer/SMTP.php';
 require_once __DIR__ . '/PHPMailer/Exception.php';
+require_once __DIR__ . '/db.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
@@ -121,4 +122,37 @@ function fallbackMail(string $to, string $subject, string $body, string $fromNam
         error_log("fallbackMail fout: mail() retourneerde false voor ontvanger {$to}");
     }
     return $sent;
+}
+
+/**
+ * Stuur een aankoopbevestiging naar de klant.
+ * Alleen aanroepen bij een definitieve overgang naar 'paid'.
+ */
+function sendPurchaseConfirmation(int $purchaseId): void
+{
+    $stmt = db()->prepare(
+        'SELECT u.email, u.name, v.title, v.id AS video_id, p.amount, p.status
+         FROM purchases p
+         JOIN users  u ON u.id = p.user_id
+         JOIN videos v ON v.id = p.video_id
+         WHERE p.id = ? AND p.status = \'paid\'
+         LIMIT 1'
+    );
+    $stmt->execute([$purchaseId]);
+    $p = $stmt->fetch();
+
+    if (!$p) {
+        return; // Alleen bevestigen bij daadwerkelijk betaald
+    }
+
+    $videoLink = BASE_URL . '/members/watch.php?id=' . (int) $p['video_id'];
+    $subject   = 'Aankoopbevestiging — HB Foto & Video';
+    $body      = "Beste {$p['name']},\r\n\r\n"
+        . "Bedankt voor je aankoop van \"{$p['title']}\"!\r\n\r\n"
+        . "Je kunt de video bekijken via deze link:\r\n"
+        . "{$videoLink}\r\n\r\n"
+        . "Veel kijkplezier!\r\n\r\n"
+        . "Met vriendelijke groet,\r\nHB Foto & Video";
+
+    sendMail($p['email'], $subject, $body);
 }
