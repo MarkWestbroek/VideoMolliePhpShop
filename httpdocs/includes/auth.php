@@ -86,7 +86,9 @@ function loginUser(array $user): void
     $_SESSION['is_admin'] = (bool) $user['is_admin'];
 
     // IP-tracking: registreer huidige IP en bepaal of video-toegang geblokkeerd moet worden
-    $blocked = trackLoginIp((int) $user['id']);
+    // Admins zijn uitgezonderd van IP-tracking.
+    $isAdmin = (bool) $user['is_admin'];
+    $blocked = $isAdmin ? false : trackLoginIp((int) $user['id']);
     $_SESSION['viewing_blocked'] = $blocked;
 }
 
@@ -188,6 +190,11 @@ function getViewingBlockedStatus(): array
 
     // Sessie-flag update bij elke call: check ook DB voor het geval admins de blokkade ophieven
     $userId = (int) $_SESSION['user_id'];
+
+    // Admins zijn uitgezonderd van IP-tracking
+    if (!empty($_SESSION['is_admin'])) {
+        return ['blocked' => false, 'ipCount' => 0, 'maxIps' => IP_TRACK_MAX];
+    }
 
     // Tel actieve IP's
     $ttl = IP_TRACK_TTL;

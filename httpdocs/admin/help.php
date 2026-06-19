@@ -62,6 +62,15 @@ require_once __DIR__ . '/../includes/header.php';
                 (zie punt 3). Anders laat je dit op "Openbaar" staan.</li>
             <li>Klik op <strong>Opslaan</strong>.</li>
         </ol>
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Een video verwijderen</h3>
+        <ol>
+            <li>Klik in het video-overzicht op de rode <strong>Verwijderen</strong>-knop.</li>
+            <li>Er verschijnt een popup. Klik op <strong>Verwijderen</strong> om te bevestigen.</li>
+            <li><strong>Is de video al gekocht?</strong> Dan vraagt het systeem om het woord
+                <strong>verwijderen</strong> in te typen. Dit is een extra beveiliging:
+                verwijder geen video's waar klanten voor betaald hebben, tenzij het
+                testaankopen zijn.</li>
+        </ol>
         <p class="text-muted" style="font-size:.9rem;">
             Tip: zet een video op <em>inactief</em> (via Bewerken) als je hem
             tijdelijk wilt verbergen zonder hem te verwijderen.
@@ -187,6 +196,12 @@ require_once __DIR__ . '/../includes/header.php';
             <li>Je kunt de IP-lijst ook wissen via de <strong>Details</strong>-weergave
                 (daar staat ook een Reset-knop).</li>
         </ol>
+
+        <h3 style="font-size:1.05rem;margin-top:1.25rem;">Let op: beheerders</h3>
+        <p><strong>Beheerders (admins) zijn uitgezonderd</strong> van de IP-limiet.
+           Jij en andere admins kunnen vanaf elk apparaat inloggen zonder geblokkeerd
+           te worden. Dit is zo ingesteld zodat je altijd toegang hebt om eventuele
+           blokkades van klanten op te heffen.</p>
     </section>
 
     <!-- ============================================================ -->
