@@ -771,24 +771,66 @@ elseif ($action === 'sales_overview' && $salesOverview): ?>
 
 <?php endif; ?>
 
+<!-- Verwijder-bevestiging modal (verborgen tot gebruik) -->
+<div id="delete-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1e1e1e;border:1px solid var(--border);border-radius:8px;padding:2rem;max-width:460px;width:90%;">
+        <h3 style="margin:0 0 .75rem;color:#e74c3c;">&#9888; Video verwijderen</h3>
+        <p id="delete-modal-msg" style="margin:0 0 1rem;line-height:1.5;"></p>
+        <p style="margin:0 0 .75rem;font-size:.85rem;color:var(--text-muted);">Type <strong>verwijderen</strong> om door te gaan:</p>
+        <input type="text" id="delete-modal-input" style="width:100%;padding:.6rem;border:1px solid var(--border);border-radius:4px;font-size:1rem;background:#2a2a2a;color:#fff;" autofocus>
+        <div style="display:flex;gap:.75rem;margin-top:1rem;">
+            <button id="delete-modal-confirm" class="btn" style="background:#c0392b;color:#fff;border-color:#c0392b;">Verwijderen</button>
+            <button id="delete-modal-cancel" class="btn btn-secondary">Annuleren</button>
+        </div>
+    </div>
+</div>
+
 <script>
-document.querySelectorAll('.delete-video-form').forEach(function(f) {
-    f.addEventListener('submit', function(e) {
-        var pc = parseInt(this.getAttribute('data-purchases') || '0');
-        var title = this.getAttribute('data-title') || '';
-        if (pc > 0) {
-            e.preventDefault();
-            var inp = prompt('Video "' + title + '" is al ' + pc + ' keer gekocht.\n\nType "verwijderen" om de video tóch te verwijderen.\nLet op: doe dit alleen bij test-video\'s.', '');
-            if (inp === 'verwijderen') {
-                this.querySelector('input[name=confirm_delete]').value = 'verwijderen';
-                this.submit();
-            }
-            return;
-        }
-        if (!confirm('Weet je zeker dat je deze video wilt verwijderen?')) {
-            e.preventDefault();
+(function(){
+    var modal   = document.getElementById('delete-modal');
+    var msg     = document.getElementById('delete-modal-msg');
+    var inp     = document.getElementById('delete-modal-input');
+    var confirm = document.getElementById('delete-modal-confirm');
+    var cancel  = document.getElementById('delete-modal-cancel');
+    var currentForm = null;
+
+    function closeModal() {
+        modal.style.display = 'none';
+        currentForm = null;
+        inp.value = '';
+    }
+
+    cancel.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+
+    confirm.addEventListener('click', function() {
+        if (currentForm && inp.value.trim().toLowerCase() === 'verwijderen') {
+            currentForm.querySelector('input[name=confirm_delete]').value = 'verwijderen';
+            currentForm.submit();
+        } else {
+            inp.style.borderColor = '#e74c3c';
+            inp.focus();
         }
     });
-});
+
+    document.querySelectorAll('.delete-video-form').forEach(function(f) {
+        f.addEventListener('submit', function(e) {
+            e.preventDefault();
+            currentForm = this;
+            var pc = parseInt(this.getAttribute('data-purchases') || '0');
+            var title = this.getAttribute('data-title') || '';
+            inp.style.borderColor = 'var(--border)';
+            if (pc > 0) {
+                msg.innerHTML = 'Video <strong>"' + title.replace(/</g,'&lt;') + '"</strong> is al <strong>' + pc + '</strong> keer gekocht.<br>Let op: doe dit alleen bij test-video\'s.';
+                modal.style.display = 'flex';
+                inp.focus();
+            } else {
+                msg.innerHTML = 'Weet je zeker dat je <strong>"' + title.replace(/</g,'&lt;') + '"</strong> wilt verwijderen?';
+                modal.style.display = 'flex';
+                inp.focus();
+            }
+        });
+    });
+})();
 </script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
