@@ -130,12 +130,15 @@ if ($emailFilter === 'verified') {
 }
 // Controleer of streaming_at kolom bestaat (migratie mogelijk nog niet uitgevoerd)
 $hasStreamingAt = false;
+$hasStreamingType = false;
 try {
     db()->query('SELECT streaming_at FROM users LIMIT 0');
     $hasStreamingAt = true;
-} catch (\PDOException $e) {
-    // Kolom bestaat nog niet
-}
+} catch (\PDOException $e) {}
+try {
+    db()->query('SELECT streaming_type FROM users LIMIT 0');
+    $hasStreamingType = true;
+} catch (\PDOException $e) {}
 
 if ($onlineFilter === 'streaming') {
     $conditions[] = $hasStreamingAt
@@ -169,7 +172,8 @@ $having = $havingConds ? ' HAVING ' . implode(' AND ', $havingConds) : '';
 
 $users = db()->prepare(
     "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity"
-            . ($hasStreamingAt ? ', u.streaming_at' : ', NULL AS streaming_at') . ",
+            . ($hasStreamingAt ? ', u.streaming_at' : ', NULL AS streaming_at')
+            . ($hasStreamingType ? ', u.streaming_type' : ", NULL AS streaming_type") . ",
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,
@@ -391,11 +395,16 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
                     <?php
                     $lastActivity = $u['last_activity'] ? time() - strtotime($u['last_activity']) : null;
                     $streamingAgo = $u['streaming_at'] ? time() - strtotime($u['streaming_at']) : null;
-                    $isStreaming  = $streamingAgo !== null && $streamingAgo <= 120;  // 2 min = echte video-stream
+                    $isStreaming  = $streamingAgo !== null && $streamingAgo <= 120;  // 2 min = aan het kijken
                     $isOnline     = $lastActivity !== null && $lastActivity <= 900;   // 15 min = online
+                    $streamType   = $u['streaming_type'] ?? null;
                     ?>
                     <?php if ($isStreaming): ?>
-                        <span style="color:#e74c3c;font-weight:600;" title="Video aan het streamen (streaming_at: <?= date('H:i:s', strtotime($u['streaming_at'])) ?>)">&#9679; stream</span>
+                        <?php if ($streamType === 'vimeo'): ?>
+                            <span style="color:#3498db;font-weight:600;" title="Video aan het kijken via Vimeo">&#9679; vimeo</span>
+                        <?php else: ?>
+                            <span style="color:#e74c3c;font-weight:600;" title="Video aan het streamen (lokaal)">&#9679; stream</span>
+                        <?php endif; ?>
                     <?php elseif ($isOnline): ?>
                         <span class="status-paid" title="Actief: <?= date('H:i', strtotime($u['last_activity'])) ?>">&#9679; online</span>
                     <?php elseif ($u['last_activity']): ?>

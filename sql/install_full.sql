@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `is_admin`      TINYINT(1)    NOT NULL DEFAULT 0,
     `last_activity` DATETIME      DEFAULT NULL COMMENT 'Bijgewerkt bij elke request (max 1x per minuut)',
     `streaming_at`  DATETIME      DEFAULT NULL COMMENT 'Alleen bijgewerkt door stream.php (echte video-stream)',
+    `streaming_type` ENUM('local','vimeo') DEFAULT NULL COMMENT 'Onderscheid lokale stream vs Vimeo',
     `email_verified_at` DATETIME  DEFAULT NULL COMMENT 'Datum/tijd van e-mailverificatie',
     `verification_token` VARCHAR(64) DEFAULT NULL COMMENT 'Token voor e-mailverificatie',
     `created_at`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

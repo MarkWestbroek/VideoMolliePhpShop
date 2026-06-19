@@ -67,7 +67,7 @@ $now    = time();
 if (empty($_SESSION['stream_activity_updated']) || $now - $_SESSION['stream_activity_updated'] >= 30) {
     // Probeer beide kolommen te updaten; als streaming_at nog niet bestaat, val terug op alleen last_activity
     try {
-        db()->prepare('UPDATE users SET last_activity = NOW(), streaming_at = NOW() WHERE id = ?')->execute([$userId]);
+        db()->prepare('UPDATE users SET last_activity = NOW(), streaming_at = NOW(), streaming_type = \'local\' WHERE id = ?')->execute([$userId]);
     } catch (\PDOException $e) {
         db()->prepare('UPDATE users SET last_activity = NOW() WHERE id = ?')->execute([$userId]);
     }

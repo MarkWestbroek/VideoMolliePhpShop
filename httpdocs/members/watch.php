@@ -94,4 +94,65 @@ require_once __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
+<script>
+// Heartbeat: elke 30s streaming_at updaten zolang de video speelt
+// Werkt voor zowel Vimeo (iframe) als lokale video's
+(function() {
+    var isPlaying = false;
+    var timer     = null;
+    var videoType = <?= json_encode(!empty($video['vimeo_id']) ? 'vimeo' : 'local') ?>;
+    var heartbeatUrl = '<?= BASE_URL ?>/heartbeat.php?type=' + videoType;
+
+    function sendHeartbeat() {
+        fetch(heartbeatUrl, { method: 'POST', keepalive: true }).catch(function(){});
+    }
+
+    function startHeartbeat() {
+        if (timer) return;
+        isPlaying = true;
+        sendHeartbeat();
+        timer = setInterval(function() {
+            if (isPlaying) sendHeartbeat();
+        }, 30000);
+    }
+
+    function stopHeartbeat() {
+        isPlaying = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        // Stuur nog één heartbeat zodat admin weet dat stream nét gestopt is
+        sendHeartbeat();
+    }
+
+    // Lokale video: HTML5 events
+    var localVideo = document.querySelector('video');
+    if (localVideo) {
+        localVideo.addEventListener('play', startHeartbeat);
+        localVideo.addEventListener('playing', startHeartbeat);
+        localVideo.addEventListener('pause', stopHeartbeat);
+        localVideo.addEventListener('ended', stopHeartbeat);
+    }
+
+    // Vimeo: postMessage API
+    var vimeoIframe = document.querySelector('iframe[src*=\"player.vimeo.com\"]');
+    if (vimeoIframe) {
+        window.addEventListener('message', function(e) {
+            if (e.origin !== 'https://player.vimeo.com') return;
+            try {
+                var data = JSON.parse(e.data);
+                if (data.event === 'ready') {
+                    // Vraag Vimeo om play/pause events te sturen
+                    vimeoIframe.contentWindow.postMessage(JSON.stringify({method: 'addEventListener', value: 'play'}), 'https://player.vimeo.com');
+                    vimeoIframe.contentWindow.postMessage(JSON.stringify({method: 'addEventListener', value: 'pause'}), 'https://player.vimeo.com');
+                    vimeoIframe.contentWindow.postMessage(JSON.stringify({method: 'addEventListener', value: 'ended'}), 'https://player.vimeo.com');
+                } else if (data.event === 'play') {
+                    startHeartbeat();
+                } else if (data.event === 'pause' || data.event === 'ended') {
+                    stopHeartbeat();
+                }
+            } catch (ex) {}
+        });
+    }
+})();
+</script>
+
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
