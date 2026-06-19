@@ -36,6 +36,29 @@ if ($ipStatus['blocked']) {
     exit;
 }
 
+// Niet-geverifieerde gebruikers zien geen video's
+if (!isEmailVerified()) {
+    $pageTitle = 'E-mail verifiëren — HB Foto & Video';
+    require_once __DIR__ . '/../includes/header.php';
+    ?>
+    <div class="form-card" style="text-align:center;">
+        <h1>&#9993; E-mailadres nog niet geverifieerd</h1>
+        <p style="font-size:1.05rem;margin:1.5rem 0;line-height:1.6;">
+            Je e-mailadres is nog niet bevestigd.<br>
+            Zonder verificatie kun je geen video's bekijken of kopen.
+        </p>
+        <p style="margin-bottom:1.5rem;color:var(--text-muted);">
+            Check je inbox (en spambox) voor de verificatielink, of vraag een nieuwe aan.
+        </p>
+        <a href="<?= BASE_URL ?>/verify.php?resend=1" class="btn btn-primary">
+            &#128231; Verificatie-e-mail opnieuw versturen
+        </a>
+    </div>
+    <?php
+    require_once __DIR__ . '/../includes/footer.php';
+    exit;
+}
+
 // Melding voor niet-geverifieerde gebruikers die willen kopen
 $notVerifiedError = ($_GET['error'] ?? '') === 'not_verified';
 
