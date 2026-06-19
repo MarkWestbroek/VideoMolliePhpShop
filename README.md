@@ -10,6 +10,9 @@ PHP video streaming platform met Mollie-betalingen, staffelprijzen, event-toegan
 - **Gratis video's** — checkbox in admin, prijs/staffel worden genegeerd
 - **E-mailverificatie** — nieuwe accounts moeten e-mail bevestigen
 - **IP-tracking** — maximaal 3 IP's per gebruiker per 2 weken; 4e IP blokkeert video-toegang
+- **Video-weergaven tracking** — bijgehouden wie wanneer welke video bekijkt
+- **Streaming-detectie** — admin ziet wie er op dit moment een video streamt
+- **24-uurs sessies** — gebruikers en admins blijven 24 uur ingelogd
 - **Verdachte registratie-detectie** — admins krijgen notificatie bij bot-achtige accounts
 - **Admin dashboard** — video CRUD, gebruikersbeheer, verkoopoverzicht, Mollie betalingsbeheer
 
@@ -57,6 +60,7 @@ sql/
 ├── install_full.sql            # Volledig databaseschema
 ├── migration_login_ips.sql     # Migratie: IP-tracking
 ├── migration_email_verification.sql  # Migratie: e-mailverificatie
+├── migration_video_views.sql   # Migratie: weergaven-tracking
 └── migration_rate_limiting.sql       # Migratie: rate limiting
 
 private/
@@ -122,6 +126,7 @@ define('IP_TRACK_TTL', 1209600);  // 2 weken (14 × 24 × 3600 seconden)
 | `password_resets` | Wachtwoord reset tokens |
 | `login_attempts` | Rate limiting |
 | `login_ips` | IP-tracking (tegen delen) |
+| `video_views` | Weergaven-tracking |
 
 ## E-mail
 

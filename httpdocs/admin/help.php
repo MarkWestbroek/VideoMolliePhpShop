@@ -120,7 +120,10 @@ require_once __DIR__ . '/../includes/header.php';
         <h2>4. Gebruikers beheren</h2>
         <p>Onder <strong>Beheer &rarr; Gebruikers</strong> zie je alle accounts.</p>
         <ul>
-            <li><strong>Online</strong> — wie de laatste 15 minuten actief was.</li>
+            <li><strong>Online</strong> — wie de laatste 15 minuten actief was.
+                <strong>🔴 stream</strong> betekent dat iemand op dit moment een video aan het kijken is.</li>
+            <li><strong>Bekeken video's</strong> — in de details van een gebruiker zie je precies
+                welke video's iemand bekeken heeft en op welk tijdstip.</li>
             <li><strong>Events / Aankopen / Betaald</strong> — hoeveel events een
                 klant heeft ontgrendeld, hoeveel video's gekocht, en het totaalbedrag.</li>
             <li><strong>Details</strong> — klap een gebruiker open om precies te zien
@@ -170,6 +173,8 @@ require_once __DIR__ . '/../includes/header.php';
                 weergegeven — de limiet is bereikt.</li>
             <li>Klap een gebruiker open (<strong>Details</strong>) om te zien
                 <em>welke</em> IP's en wanneer ze voor het eerst en laatst zijn gezien.</li>
+            <li>In het <strong>video-overzicht</strong> zie je een kolom <strong>Bekeken</strong>
+                met het totaal aantal weergaven per video.</li>
         </ul>
 
         <h3 style="font-size:1.05rem;margin-top:1.25rem;">Blokkade opheffen</h3>
@@ -195,6 +200,10 @@ require_once __DIR__ . '/../includes/header.php';
         <p><strong>De video speelt niet af.</strong><br>
            Controleer of de <em>bestandsnaam</em> in de site exact overeenkomt met
            het geüploade bestand (let op hoofdletters en <code>.mp4</code>).</p>
+
+        <p><strong>Ik word steeds uitgelogd.</strong><br>
+           Sessies blijven 24 uur actief. Word je toch uitgelogd, dan is je
+           browser mogelijk ingesteld om cookies te wissen bij sluiten.</p>
 
         <p><strong>Een klant kan niet betalen.</strong><br>
            Dit loopt via Mollie. Controleer in het Mollie-dashboard of er een

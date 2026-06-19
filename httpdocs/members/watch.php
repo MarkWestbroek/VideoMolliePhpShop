@@ -38,6 +38,18 @@ if (!hasPurchased((int) $user['id'], $videoId)) {
     exit;
 }
 
+// Log de weergave (één keer per sessie per video)
+$viewKey = 'logged_view_' . $videoId;
+if (empty($_SESSION[$viewKey])) {
+    db()->prepare('INSERT INTO video_views (user_id, video_id) VALUES (?, ?)')
+        ->execute([(int) $user['id'], $videoId]);
+    $_SESSION[$viewKey] = true;
+}
+
+// Markeer als "aan het streamen" (voor admin-overzicht)
+$_SESSION['streaming_video_id'] = $videoId;
+$_SESSION['streaming_since']    = time();
+
 $pageTitle = htmlspecialchars($video['title'], ENT_QUOTES, 'UTF-8') . ' — HB Foto & Video';
 require_once __DIR__ . '/../includes/header.php';
 ?>

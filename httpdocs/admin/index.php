@@ -217,10 +217,13 @@ $events    = db()->query('SELECT id, naam FROM events ORDER BY naam')->fetchAll(
 
 if ($action === 'dashboard') {
     $videos = db()->query(
-        'SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam
+        'SELECT v.*, s.naam AS staffel_naam, e.naam AS event_naam,
+                COUNT(vv.id) AS view_count
          FROM videos v
          LEFT JOIN staffels s ON s.id = v.staffel_id
          LEFT JOIN events   e ON e.id = v.event_id
+         LEFT JOIN video_views vv ON vv.video_id = v.id
+         GROUP BY v.id
          ORDER BY v.created_at DESC'
     )->fetchAll();
 }
@@ -283,6 +286,7 @@ if ($action === 'dashboard'): ?>
                 <th class="tt" data-tooltip="Vaste prijs of staffel (trapsgewijze korting)">Prijs / Staffel</th>
                 <th class="tt" data-tooltip="Besloten event: video is alleen zichtbaar voor gebruikers met de toegangscode">Event</th>
                 <th>Bestand</th>
+                <th>Bekeken</th>
                 <th>Status</th>
                 <th>Acties</th>
             </tr>
@@ -311,6 +315,13 @@ if ($action === 'dashboard'): ?>
                     <?php endif; ?>
                 </td>
                 <td><code style="font-size:.8rem"><?= htmlspecialchars($v['filename'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td style="text-align:center">
+                    <?php if ((int) $v['view_count'] > 0): ?>
+                        <?= (int) $v['view_count'] ?>
+                    <?php else: ?>
+                        <span class="text-muted">—</span>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <?php if ($v['active']): ?>
                         <span class="status-paid">Actief</span>

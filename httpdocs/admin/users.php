@@ -95,6 +95,7 @@ $detail       = null;
 $detailEvents   = [];
 $detailPurchases = [];
 $detailIps       = [];
+$detailViews     = [];
 
 if ($detailUserId > 0) {
     $stmt = db()->prepare('SELECT id, email, name, is_admin, email_verified_at, created_at FROM users WHERE id = ? LIMIT 1');
@@ -126,6 +127,18 @@ if ($detailUserId > 0) {
 
         // Login IP's
         $detailIps = getUserLoginIps($detailUserId);
+
+        // Video-weergaven
+        $stmt = db()->prepare(
+            'SELECT v.title AS video_title, vv.watched_at
+             FROM video_views vv
+             JOIN videos v ON v.id = vv.video_id
+             WHERE vv.user_id = ?
+             ORDER BY vv.watched_at DESC
+             LIMIT 50'
+        );
+        $stmt->execute([$detailUserId]);
+        $detailViews = $stmt->fetchAll();
     } else {
         $detailUserId = 0;
     }
@@ -196,10 +209,13 @@ require_once __DIR__ . '/../includes/header.php';
                 </td>
                 <td style="text-align:center">
                     <?php
-                    $isOnline = $u['last_activity']
-                        && (time() - strtotime($u['last_activity'])) <= 900;
+                    $lastActivity = $u['last_activity'] ? time() - strtotime($u['last_activity']) : null;
+                    $isStreaming = $lastActivity !== null && $lastActivity <= 120;  // 2 min = streaming
+                    $isOnline    = $lastActivity !== null && $lastActivity <= 900;  // 15 min = online
                     ?>
-                    <?php if ($isOnline): ?>
+                    <?php if ($isStreaming): ?>
+                        <span style="color:#e74c3c;font-weight:600;" title="Video aan het streamen">&#9679; stream</span>
+                    <?php elseif ($isOnline): ?>
                         <span class="status-paid" title="Actief: <?= date('H:i', strtotime($u['last_activity'])) ?>">&#9679; online</span>
                     <?php elseif ($u['last_activity']): ?>
                         <span class="text-muted" style="font-size:.8rem" title="Laatst actief">
@@ -449,6 +465,37 @@ require_once __DIR__ . '/../includes/header.php';
                                                 </td>
                                                 <td style="padding:.3rem .5rem;font-size:.82rem;white-space:nowrap">
                                                     <?= date('d-m-Y H:i', strtotime($lip['last_seen'])) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Video-weergaven -->
+                            <div>
+                                <h4 style="margin:0 0 .6rem;font-size:.9rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">
+                                    Bekeken video's (<?= count($detailViews) ?>)
+                                </h4>
+                                <?php if (empty($detailViews)): ?>
+                                    <p class="text-muted" style="font-size:.88rem">Nog geen video's bekeken.</p>
+                                <?php else: ?>
+                                    <table style="width:100%;font-size:.88rem;border-collapse:collapse;">
+                                        <thead>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <th style="text-align:left;padding:.25rem .5rem">Video</th>
+                                                <th style="text-align:left;padding:.25rem .5rem">Bekeken op</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php foreach ($detailViews as $vv): ?>
+                                            <tr>
+                                                <td style="padding:.3rem .5rem">
+                                                    <?= htmlspecialchars($vv['video_title'], ENT_QUOTES, 'UTF-8') ?>
+                                                </td>
+                                                <td style="padding:.3rem .5rem;font-size:.82rem;white-space:nowrap">
+                                                    <?= date('d-m-Y H:i', strtotime($vv['watched_at'])) ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
