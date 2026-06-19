@@ -271,6 +271,7 @@ if ($action === 'purchases') {
     $dir     = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
     $statusFilter = $_GET['status'] ?? '';
     $amountFilter = $_GET['amount'] ?? '';
+    $videoFilter  = $_GET['video']  ?? '';
 
     // Whitelist sort-kolommen
     $allowedSorts = ['created_at' => 'p.created_at', 'user_name' => 'u.name', 'video_title' => 'v.title', 'amount' => 'p.amount', 'status' => 'p.status', 'paid_at' => 'p.paid_at'];
@@ -292,11 +293,16 @@ if ($action === 'purchases') {
         $conditions[] = 'p.amount = ?';
         $params[] = $amountFilter;
     }
+    if ($videoFilter !== '') {
+        $conditions[] = 'v.id = ?';
+        $params[] = (int) $videoFilter;
+    }
     $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
 
     // Unieke waardes voor dropdowns
     $distinctStatuses = db()->query('SELECT DISTINCT status FROM purchases ORDER BY status')->fetchAll(\PDO::FETCH_COLUMN, 0) ?: [];
     $distinctAmounts  = db()->query('SELECT DISTINCT amount FROM purchases ORDER BY amount DESC')->fetchAll(\PDO::FETCH_COLUMN, 0) ?: [];
+    $distinctVideos   = db()->query("SELECT DISTINCT v.id, v.title FROM purchases p JOIN videos v ON v.id = p.video_id ORDER BY v.title")->fetchAll();
 
     // Totaal aantal
     $stmt = db()->prepare(
@@ -754,21 +760,23 @@ elseif ($action === 'edit_video' && $video): ?>
 // ---- Verkopenoverzicht ------------------------------------
 elseif ($action === 'purchases'): 
     // Helper voor sorteerlinks
-    $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page, $statusFilter, $amountFilter): string {
+    $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page, $statusFilter, $amountFilter, $videoFilter): string {
         $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
         $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
         $q      = '?action=purchases&sort=' . $col . '&dir=' . $newDir . '&page=' . $page
                 . ($search !== '' ? '&search=' . urlencode($search) : '')
                 . ($statusFilter !== '' ? '&status=' . urlencode($statusFilter) : '')
-                . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '');
+                . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '')
+                . ($videoFilter !== '' ? '&video=' . urlencode($videoFilter) : '');
         return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
     };
     // Helper voor paginatielinks
-    $pageLink = function(int $p) use ($sort, $dir, $search, $statusFilter, $amountFilter): string {
+    $pageLink = function(int $p) use ($sort, $dir, $search, $statusFilter, $amountFilter, $videoFilter): string {
         return '?action=purchases&sort=' . $sort . '&dir=' . $dir . '&page=' . $p
              . ($search !== '' ? '&search=' . urlencode($search) : '')
              . ($statusFilter !== '' ? '&status=' . urlencode($statusFilter) : '')
-             . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '');
+             . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '')
+             . ($videoFilter !== '' ? '&video=' . urlencode($videoFilter) : '');
     };
     // Helper voor filter-URL (behoudt huidige sortering en zoekterm)
     $filterBase = '?action=purchases&sort=' . $sort . '&dir=' . $dir . '&page=1'
@@ -779,11 +787,11 @@ elseif ($action === 'purchases'):
     <h1>Verkopen <span style="font-size:1rem;font-weight:400;color:var(--text-muted)">(<?= $total ?>)</span></h1>
 </div>
 
-<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;">
+<form id="search-form" style="margin-bottom:1rem;display:flex;gap:.5rem;" onsubmit="var p=new URLSearchParams(window.location.search);var s=this.search.value.trim();if(s===''){p.delete('search');}else{p.set('search',s);}p.set('page','1');window.location.search=p.toString();return false;">
     <input type="hidden" name="action" value="purchases">
-    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
+    <input type="text" id="search-input" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
     <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
-    <?php if ($search !== '' || $statusFilter !== '' || $amountFilter !== ''): ?>
+    <?php if ($search !== '' || $statusFilter !== '' || $amountFilter !== '' || $videoFilter !== ''): ?>
         <a href="?action=purchases" class="btn btn-sm btn-secondary">Wis alle filters</a>
     <?php endif; ?>
 </form>
@@ -807,7 +815,14 @@ elseif ($action === 'purchases'):
             <tr style="background:var(--surface-hover, rgba(255,255,255,.02));">
                 <td></td>
                 <td></td>
-                <td></td>
+                <td>
+                    <select class="filter-drop" data-param="video" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $videoFilter === '' ? 'selected' : '' ?>>Alle video's</option>
+                        <?php foreach ($distinctVideos as $vid): ?>
+                            <option value="<?= (int) $vid['id'] ?>" <?= $videoFilter === (string) $vid['id'] ? 'selected' : '' ?>><?= htmlspecialchars($vid['title'], ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
                 <td>
                     <select class="filter-drop" data-param="amount" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
                         <option value="" <?= $amountFilter === '' ? 'selected' : '' ?>>Alle bedragen</option>
