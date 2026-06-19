@@ -246,16 +246,46 @@ if ($action === 'dashboard') {
 }
 
 if ($action === 'purchases') {
-    $purchases = db()->query(
-        'SELECT p.id, u.name AS user_name, u.email, v.title AS video_title,
-                p.amount, p.status, p.created_at, p.paid_at,
-                p.mollie_payment_id
+    $page    = max(1, (int) ($_GET['page'] ?? 1));
+    $perPage = 50;
+    $search  = trim($_GET['search'] ?? '');
+    $sort    = $_GET['sort'] ?? 'created_at';
+    $dir     = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+
+    // Whitelist sort-kolommen
+    $allowedSorts = ['created_at' => 'p.created_at', 'user_name' => 'u.name', 'video_title' => 'v.title', 'amount' => 'p.amount', 'status' => 'p.status', 'paid_at' => 'p.paid_at'];
+    $sortCol = $allowedSorts[$sort] ?? 'p.created_at';
+
+    // Bouw WHERE
+    $where  = '';
+    $params = [];
+    if ($search !== '') {
+        $where  = " WHERE (u.name LIKE ? OR u.email LIKE ? OR v.title LIKE ?)";
+        $like   = "%{$search}%";
+        $params = [$like, $like, $like];
+    }
+
+    // Totaal aantal
+    $total = (int) db()->prepare(
+        "SELECT COUNT(*) FROM purchases p JOIN users u ON u.id = p.user_id JOIN videos v ON v.id = p.video_id{$where}"
+    )->execute($params)->fetchColumn();
+
+    // Data ophalen
+    $offset = ($page - 1) * $perPage;
+    $purchases = db()->prepare(
+        "SELECT p.id, u.name AS user_name, u.email, v.title AS video_title,
+                p.amount, p.status, p.created_at, p.paid_at, p.mollie_payment_id
          FROM purchases p
          JOIN users  u ON u.id = p.user_id
          JOIN videos v ON v.id = p.video_id
-         ORDER BY p.created_at DESC
-         LIMIT 200'
-    )->fetchAll();
+         {$where}
+         ORDER BY {$sortCol} {$dir}
+         LIMIT {$perPage} OFFSET {$offset}"
+    );
+    $purchases->execute($params);
+    $purchases = $purchases->fetchAll();
+
+    $totalPages = max(1, (int) ceil($total / $perPage));
 }
 
 $salesOverview = null;
@@ -662,26 +692,46 @@ elseif ($action === 'edit_video' && $video): ?>
 
 <?php
 // ---- Verkopenoverzicht ------------------------------------
-elseif ($action === 'purchases'): ?>
+elseif ($action === 'purchases'): 
+    // Helper voor sorteerlinks
+    $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page): string {
+        $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
+        $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
+        $q      = '?action=purchases&sort=' . $col . '&dir=' . $newDir . ($search !== '' ? '&search=' . urlencode($search) : '') . '&page=' . $page;
+        return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
+    };
+    // Helper voor paginatielinks
+    $pageLink = function(int $p) use ($sort, $dir, $search): string {
+        return '?action=purchases&sort=' . $sort . '&dir=' . $dir . ($search !== '' ? '&search=' . urlencode($search) : '') . '&page=' . $p;
+    };
+?>
 
 <div class="page-header">
-    <h1>Verkopen</h1>
-    <span class="text-muted" style="font-size:.9rem">Laatste 200 transacties</span>
+    <h1>Verkopen <span style="font-size:1rem;font-weight:400;color:var(--text-muted)">(<?= $total ?>)</span></h1>
 </div>
 
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;">
+    <input type="hidden" name="action" value="purchases">
+    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
+    <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
+    <?php if ($search !== ''): ?>
+        <a href="?action=purchases" class="btn btn-sm btn-secondary">Wis</a>
+    <?php endif; ?>
+</form>
+
 <?php if (empty($purchases)): ?>
-    <p class="text-muted">Nog geen aankopen.</p>
+    <p class="text-muted">Geen aankopen gevonden.</p>
 <?php else: ?>
 <div class="table-wrap">
     <table class="data-table">
         <thead>
             <tr>
-                <th>Datum</th>
-                <th>Gebruiker</th>
-                <th>Video</th>
-                <th>Bedrag</th>
-                <th>Status</th>
-                <th>Betaald op</th>
+                <th><?= $sortLink('created_at', 'Datum') ?></th>
+                <th><?= $sortLink('user_name', 'Gebruiker') ?></th>
+                <th><?= $sortLink('video_title', 'Video') ?></th>
+                <th><?= $sortLink('amount', 'Bedrag') ?></th>
+                <th><?= $sortLink('status', 'Status') ?></th>
+                <th><?= $sortLink('paid_at', 'Betaald op') ?></th>
                 <th>Mollie</th>
                 <th>Acties</th>
             </tr>
@@ -727,6 +777,19 @@ elseif ($action === 'purchases'): ?>
         </tbody>
     </table>
 </div>
+
+<?php if ($totalPages > 1): ?>
+<div style="display:flex;gap:.35rem;justify-content:center;margin-top:1rem;flex-wrap:wrap;">
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+        <?php if ($i === $page): ?>
+            <span style="padding:.35rem .7rem;background:var(--primary);color:#fff;border-radius:4px;font-weight:600;"><?= $i ?></span>
+        <?php else: ?>
+            <a href="<?= $pageLink($i) ?>" style="padding:.35rem .7rem;border:1px solid var(--border);border-radius:4px;text-decoration:none;color:inherit;"><?= $i ?></a>
+        <?php endif; ?>
+    <?php endfor; ?>
+</div>
+<?php endif; ?>
+
 <?php endif; ?>
 
 <?php

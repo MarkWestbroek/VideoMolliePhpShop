@@ -88,18 +88,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Alle gebruikers + event-toegangen + aankopen als sub-query tellers
 // "Online" = last_activity binnen de laatste 15 minuten
-$users = db()->query(
-    'SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
+$search   = trim($_GET['search'] ?? '');
+$sort     = $_GET['sort'] ?? 'last_activity';
+$dir      = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+$filter   = $_GET['filter'] ?? '';
+
+$allowedSorts = [
+    'last_activity'  => 'u.last_activity',
+    'created_at'     => 'u.created_at',
+    'name'           => 'u.name',
+    'email'          => 'u.email',
+    'ip_count'       => 'ip_count',
+    'purchase_count' => 'purchase_count',
+    'total_paid'     => 'total_paid',
+];
+$sortCol = $allowedSorts[$sort] ?? 'u.last_activity';
+
+$where  = '';
+$params = [];
+$conditions = [];
+
+if ($search !== '') {
+    $conditions[] = '(u.name LIKE ? OR u.email LIKE ?)';
+    $like = "%{$search}%";
+    $params[] = $like;
+    $params[] = $like;
+}
+if ($filter === 'online') {
+    $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
+} elseif ($filter === 'verified') {
+    $conditions[] = 'u.email_verified_at IS NOT NULL';
+} elseif ($filter === 'unverified') {
+    $conditions[] = 'u.email_verified_at IS NULL';
+} elseif ($filter === 'admin') {
+    $conditions[] = 'u.is_admin = 1';
+} elseif ($filter === 'blocked') {
+    $conditions[] = 'COALESCE((SELECT COUNT(*) FROM login_ips li WHERE li.user_id = u.id AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY)), 0) >= ' . IP_TRACK_MAX;
+}
+
+if ($conditions) {
+    $where = ' WHERE ' . implode(' AND ', $conditions);
+}
+
+$users = db()->prepare(
+    "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity,
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
-            SUM(CASE WHEN p.status = \'paid\' THEN p.amount ELSE 0 END) AS total_paid,
+            SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,
             COALESCE((SELECT COUNT(*) FROM login_ips li WHERE li.user_id = u.id AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY)), 0) AS ip_count
      FROM users u
      LEFT JOIN event_access ea ON ea.user_id = u.id
      LEFT JOIN purchases    p  ON p.user_id  = u.id
+     {$where}
      GROUP BY u.id
-     ORDER BY u.last_activity DESC, u.created_at DESC'
-)->fetchAll();
+     ORDER BY {$sortCol} {$dir}"
+);
+$users->execute($params);
+$users = $users->fetchAll();
 
 // Verwijder-bevestiging: welke user staat in 'vraag-bevestiging'-modus?
 $confirmDeleteId = isset($_GET['delete']) ? (int) $_GET['delete'] : 0;
@@ -197,23 +242,48 @@ require_once __DIR__ . '/../includes/header.php';
     <?php endif; ?>
 </div>
 
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
+    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
+        <option value="">Alle gebruikers</option>
+        <option value="online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
+        <option value="admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admins</option>
+        <option value="verified" <?= $filter === 'verified' ? 'selected' : '' ?>>E-mail geverifieerd</option>
+        <option value="unverified" <?= $filter === 'unverified' ? 'selected' : '' ?>>E-mail niet geverifieerd</option>
+        <option value="blocked" <?= $filter === 'blocked' ? 'selected' : '' ?>>Geblokkeerd (IP's)</option>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <?php if ($search !== '' || $filter !== ''): ?>
+        <a href="?" class="btn btn-sm btn-secondary">Wis</a>
+    <?php endif; ?>
+</form>
+
 <!-- ============================================================
      Gebruikersoverzicht
      ============================================================ -->
+<?php
+// Helper voor sorteerlinks
+$sortLink = function(string $col, string $label) use ($sort, $dir, $search, $filter): string {
+    $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
+    $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
+    $q      = '?sort=' . $col . '&dir=' . $newDir . ($search !== '' ? '&search=' . urlencode($search) : '') . ($filter !== '' ? '&filter=' . urlencode($filter) : '');
+    return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
+};
+?>
 <div class="table-wrap">
     <table class="data-table">
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Naam</th>
-                <th>E-mail</th>
-                <th>Geregistreerd</th>
+                <th><?= $sortLink('name', 'Naam') ?></th>
+                <th><?= $sortLink('email', 'E-mail') ?></th>
+                <th><?= $sortLink('created_at', 'Geregistreerd') ?></th>
                 <th title="Actief binnen de laatste 15 minuten">Online</th>
-                <th title="Aantal unieke IP's afgelopen 2 weken">IP's</th>
+                <th><?= $sortLink('ip_count', "IP's") ?></th>
                 <th>E-mail</th>
                 <th>Events</th>
-                <th>Aankopen</th>
-                <th>Betaald</th>
+                <th><?= $sortLink('purchase_count', 'Aankopen') ?></th>
+                <th><?= $sortLink('total_paid', 'Betaald') ?></th>
                 <th>Rol</th>
                 <th>Acties</th>
             </tr>
