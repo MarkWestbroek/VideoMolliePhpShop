@@ -266,9 +266,11 @@ if ($action === 'purchases') {
     }
 
     // Totaal aantal
-    $total = (int) db()->prepare(
+    $stmt = db()->prepare(
         "SELECT COUNT(*) FROM purchases p JOIN users u ON u.id = p.user_id JOIN videos v ON v.id = p.video_id{$where}"
-    )->execute($params)->fetchColumn();
+    );
+    $stmt->execute($params);
+    $total = (int) $stmt->fetchColumn();
 
     // Data ophalen
     $offset = ($page - 1) * $perPage;
