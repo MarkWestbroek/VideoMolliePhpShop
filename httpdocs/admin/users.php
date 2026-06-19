@@ -128,8 +128,19 @@ if ($emailFilter === 'verified') {
 } elseif ($emailFilter === 'unverified') {
     $conditions[] = 'u.email_verified_at IS NULL';
 }
+// Controleer of streaming_at kolom bestaat (migratie mogelijk nog niet uitgevoerd)
+$hasStreamingAt = false;
+try {
+    db()->query('SELECT streaming_at FROM users LIMIT 0');
+    $hasStreamingAt = true;
+} catch (\PDOException $e) {
+    // Kolom bestaat nog niet
+}
+
 if ($onlineFilter === 'streaming') {
-    $conditions[] = 'u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
+    $conditions[] = $hasStreamingAt
+        ? 'u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)'
+        : 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
 } elseif ($onlineFilter === 'online') {
     $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
 } elseif ($onlineFilter === 'offline') {
@@ -157,7 +168,8 @@ if ($purchFilter === 'none') {
 $having = $havingConds ? ' HAVING ' . implode(' AND ', $havingConds) : '';
 
 $users = db()->prepare(
-    "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity, u.streaming_at,
+    "SELECT u.id, u.email, u.name, u.is_admin, u.email_verified_at, u.created_at, u.last_activity"
+            . ($hasStreamingAt ? ', u.streaming_at' : ', NULL AS streaming_at') . ",
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,

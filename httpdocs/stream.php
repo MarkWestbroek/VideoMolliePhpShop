@@ -35,7 +35,10 @@ if ($videoId <= 0) {
 }
 
 // 3. Video opzoeken in de database
-$stmt = db()->prepare('SELECT id, filename, event_id FROM videos WHERE id = ? AND active = 1 AND is_test = 0 LIMIT 1');
+//    Admins mogen test-video's streamen (consistent met watch.php)
+$user    = currentUser();
+$testFilter = ($user && $user['is_admin']) ? '' : ' AND is_test = 0';
+$stmt = db()->prepare('SELECT id, filename, event_id FROM videos WHERE id = ? AND active = 1' . $testFilter . ' LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
@@ -62,7 +65,12 @@ if (!hasPurchased((int) $_SESSION['user_id'], $videoId)) {
 $userId = (int) $_SESSION['user_id'];
 $now    = time();
 if (empty($_SESSION['stream_activity_updated']) || $now - $_SESSION['stream_activity_updated'] >= 30) {
-    db()->prepare('UPDATE users SET last_activity = NOW(), streaming_at = NOW() WHERE id = ?')->execute([$userId]);
+    // Probeer beide kolommen te updaten; als streaming_at nog niet bestaat, val terug op alleen last_activity
+    try {
+        db()->prepare('UPDATE users SET last_activity = NOW(), streaming_at = NOW() WHERE id = ?')->execute([$userId]);
+    } catch (\PDOException $e) {
+        db()->prepare('UPDATE users SET last_activity = NOW() WHERE id = ?')->execute([$userId]);
+    }
     $_SESSION['stream_activity_updated'] = $now;
 }
 
