@@ -809,20 +809,20 @@ elseif ($action === 'purchases'):
                 <td></td>
                 <td></td>
                 <td>
-                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <option value="<?= $filterBase ?>" <?= $amountFilter === '' ? 'selected' : '' ?> style="color:#ddd;">Alle bedragen</option>
+                    <select class="filter-drop" data-param="amount" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $amountFilter === '' ? 'selected' : '' ?>>Alle bedragen</option>
                         <?php foreach ($distinctAmounts as $amt): $amtFloat = (float) $amt; if ($amtFloat <= 0) continue; ?>
-                            <option value="<?= $filterBase . '&amount=' . urlencode((string) $amt) ?>" <?= $amountFilter === (string) $amt ? 'selected' : '' ?>>
+                            <option value="<?= htmlspecialchars((string) $amt) ?>" <?= $amountFilter === (string) $amt ? 'selected' : '' ?>>
                                 €&nbsp;<?= number_format($amtFloat, 2, ',', '.') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </td>
                 <td>
-                    <select onchange="location.href=this.value" class="filter-drop" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
-                        <option value="<?= $filterBase ?>" <?= $statusFilter === '' ? 'selected' : '' ?>>Alle</option>
+                    <select class="filter-drop" data-param="status" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
+                        <option value="" <?= $statusFilter === '' ? 'selected' : '' ?>>Alle</option>
                         <?php foreach ($distinctStatuses as $st): ?>
-                            <option value="<?= $filterBase . '&status=' . urlencode($st) ?>" <?= $statusFilter === $st ? 'selected' : '' ?>><?= htmlspecialchars($st, ENT_QUOTES, 'UTF-8') ?></option>
+                            <option value="<?= htmlspecialchars($st) ?>" <?= $statusFilter === $st ? 'selected' : '' ?>><?= htmlspecialchars($st, ENT_QUOTES, 'UTF-8') ?></option>
                         <?php endforeach; ?>
                     </select>
                 </td>
@@ -1010,5 +1010,22 @@ elseif ($action === 'sales_overview' && $salesOverview): ?>
         });
     });
 })();
+</script>
+<script>
+// Filter-dropdowns: combineer alle actieve filters in de URL
+document.querySelectorAll('.filter-drop').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var params = new URLSearchParams(window.location.search);
+        var param = this.getAttribute('data-param');
+        var val   = this.value;
+        if (val === '') {
+            params.delete(param);
+        } else {
+            params.set(param, val);
+        }
+        params.set('page', '1'); // reset paginatie bij filterwijziging
+        window.location.search = params.toString();
+    });
+});
 </script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
