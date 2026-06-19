@@ -142,8 +142,10 @@ try {
 
 if ($onlineFilter === 'streaming') {
     $conditions[] = $hasStreamingAt
-        ? 'u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)'
+        ? '(u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) AND (u.streaming_type IS NULL OR u.streaming_type = \'local\'))'
         : 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)';
+} elseif ($onlineFilter === 'vimeo') {
+    $conditions[] = 'u.streaming_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE) AND u.streaming_type = \'vimeo\'';
 } elseif ($onlineFilter === 'online') {
     $conditions[] = 'u.last_activity >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)';
 } elseif ($onlineFilter === 'offline') {
@@ -337,6 +339,7 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
                     <select class="filter-drop" data-param="online" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:#2a2a2a;color:#ddd;">
                         <option value="" <?= $onlineFilter === '' ? 'selected' : '' ?>>Alle</option>
                         <option value="streaming" <?= $onlineFilter === 'streaming' ? 'selected' : '' ?>>Stream</option>
+                        <option value="vimeo" <?= $onlineFilter === 'vimeo' ? 'selected' : '' ?>>Vimeo</option>
                         <option value="online" <?= $onlineFilter === 'online' ? 'selected' : '' ?>>Online</option>
                         <option value="offline" <?= $onlineFilter === 'offline' ? 'selected' : '' ?>>Offline</option>
                     </select>
