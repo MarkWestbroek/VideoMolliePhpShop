@@ -348,7 +348,19 @@ if ($action === 'purchases') {
         $all = $stmt->fetchAll();
 
         header('Content-Type: text/csv; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="verkopen_' . date('Y-m-d') . '.csv"');
+        $fileLabel = date('Y-m-d_H-i');
+        $filters = [];
+        if ($statusFilter !== '') $filters[] = 'status-' . $statusFilter;
+        if ($amountFilter !== '') $filters[] = 'bedrag-' . number_format((float) $amountFilter, 2, ',', '.');
+        if ($videoFilter !== '') {
+            $vt = db()->prepare('SELECT title FROM videos WHERE id = ?');
+            $vt->execute([(int) $videoFilter]);
+            $vtitle = $vt->fetchColumn();
+            if ($vtitle) $filters[] = 'video-' . mb_substr($vtitle, 0, 20);
+        }
+        if ($search !== '') $filters[] = 'zoek-' . mb_substr($search, 0, 15);
+        $fileSuffix = $filters ? ' (' . implode(', ', $filters) . ')' : '';
+        header('Content-Disposition: attachment; filename="verkopen_' . $fileLabel . $fileSuffix . '.csv"');
         $out = fopen('php://output', 'w');
         fputcsv($out, ['Datum', 'Naam', 'E-mail', 'Video', 'Bedrag', 'Status', 'Betaald op', 'Mollie ID'], ';');
         foreach ($all as $row) {
