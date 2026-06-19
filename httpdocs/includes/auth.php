@@ -139,10 +139,28 @@ function lookupIpInfo(string $ip): ?array
     }
 
     $url = 'http://ip-api.com/json/' . urlencode($ip) . '?fields=isp,mobile';
-    $ctx = stream_context_create(['http' => ['timeout' => 3]]);
-    $json = @file_get_contents($url, false, $ctx);
+    $json = false;
 
-    if ($json === false) {
+    // Probeer eerst cURL (betrouwbaarder op shared hosting)
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 3,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+        ]);
+        $json = curl_exec($ch);
+        curl_close($ch);
+    }
+
+    // Fallback naar file_get_contents
+    if ($json === false || $json === '') {
+        $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+        $json = @file_get_contents($url, false, $ctx);
+    }
+
+    if ($json === false || $json === '') {
         error_log("IP lookup failed for {$ip}");
         return null;
     }

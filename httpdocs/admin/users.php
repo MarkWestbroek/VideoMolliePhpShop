@@ -63,6 +63,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . BASE_URL . '/admin/users.php?ips_reset=1');
         exit;
     }
+
+    // ISP-info opzoeken voor IP's die nog geen provider hebben (max 20 per batch)
+    if ($postAction === 'lookup_missing_ips') {
+        $stmt = db()->query('SELECT id, ip_address FROM login_ips WHERE isp IS NULL LIMIT 20');
+        $ips  = $stmt->fetchAll();
+        $done = 0;
+        foreach ($ips as $row) {
+            $info = lookupIpInfo($row['ip_address']);
+            if ($info) {
+                db()->prepare('UPDATE login_ips SET isp = ?, is_mobile = ? WHERE id = ?')
+                    ->execute([$info['isp'], $info['is_mobile'], $row['id']]);
+                $done++;
+            }
+        }
+        $remaining = (int) db()->query('SELECT COUNT(*) FROM login_ips WHERE isp IS NULL')->fetchColumn();
+        $message = "ISP-info opgezocht: {$done} van " . count($ips) . " IP's bijgewerkt. Nog {$remaining} IP's zonder provider.";
+    }
 }
 
 // ============================================================
@@ -169,6 +186,17 @@ require_once __DIR__ . '/../includes/header.php';
 
 <div class="page-header">
     <h1>Gebruikers <span style="font-size:1rem;font-weight:400;color:var(--text-muted)">(<?= count($users) ?>)</span></h1>
+    <?php
+    $missingIsp = (int) db()->query('SELECT COUNT(*) FROM login_ips WHERE isp IS NULL')->fetchColumn();
+    if ($missingIsp > 0): ?>
+        <form method="post" style="display:inline;margin-left:1rem;">
+            <?= csrfField() ?>
+            <input type="hidden" name="post_action" value="lookup_missing_ips">
+            <button type="submit" class="btn btn-sm btn-secondary" title="Zoek ISP-info op voor IP's zonder provider (max 20 per klik)">
+                &#128269; Zoek ISP op (nog <?= $missingIsp ?>)
+            </button>
+        </form>
+    <?php endif; ?>
 </div>
 
 <!-- ============================================================
