@@ -243,8 +243,8 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
-    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
-    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
+    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op naam of e-mail..." style="flex:1;min-width:200px;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
+    <select name="filter" style="padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
         <option value="">Alle gebruikers</option>
         <option value="online" <?= $filter === 'online' ? 'selected' : '' ?>>Online</option>
         <option value="admin" <?= $filter === 'admin' ? 'selected' : '' ?>>Admins</option>

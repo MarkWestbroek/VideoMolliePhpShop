@@ -251,19 +251,34 @@ if ($action === 'purchases') {
     $search  = trim($_GET['search'] ?? '');
     $sort    = $_GET['sort'] ?? 'created_at';
     $dir     = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+    $statusFilter = $_GET['status'] ?? '';
+    $amountFilter = $_GET['amount'] ?? '';
 
     // Whitelist sort-kolommen
     $allowedSorts = ['created_at' => 'p.created_at', 'user_name' => 'u.name', 'video_title' => 'v.title', 'amount' => 'p.amount', 'status' => 'p.status', 'paid_at' => 'p.paid_at'];
     $sortCol = $allowedSorts[$sort] ?? 'p.created_at';
 
     // Bouw WHERE
-    $where  = '';
-    $params = [];
+    $conditions = [];
+    $params     = [];
     if ($search !== '') {
-        $where  = " WHERE (u.name LIKE ? OR u.email LIKE ? OR v.title LIKE ?)";
-        $like   = "%{$search}%";
-        $params = [$like, $like, $like];
+        $conditions[] = '(u.name LIKE ? OR u.email LIKE ? OR v.title LIKE ?)';
+        $like = "%{$search}%";
+        array_push($params, $like, $like, $like);
     }
+    if ($statusFilter !== '') {
+        $conditions[] = 'p.status = ?';
+        $params[] = $statusFilter;
+    }
+    if ($amountFilter !== '') {
+        $conditions[] = 'p.amount = ?';
+        $params[] = $amountFilter;
+    }
+    $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
+
+    // Unieke waardes voor dropdowns
+    $distinctStatuses = db()->query('SELECT DISTINCT status FROM purchases ORDER BY status')->fetchAll(\PDO::FETCH_COLUMN, 0);
+    $distinctAmounts  = db()->query('SELECT DISTINCT amount FROM purchases ORDER BY amount DESC')->fetchAll(\PDO::FETCH_COLUMN, 0);
 
     // Totaal aantal
     $stmt = db()->prepare(
@@ -699,13 +714,22 @@ elseif ($action === 'purchases'):
     $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $page): string {
         $newDir = ($sort === $col && $dir === 'ASC') ? 'DESC' : 'ASC';
         $arrow  = ($sort === $col) ? ($dir === 'ASC' ? ' &#9650;' : ' &#9660;') : '';
-        $q      = '?action=purchases&sort=' . $col . '&dir=' . $newDir . ($search !== '' ? '&search=' . urlencode($search) : '') . '&page=' . $page;
+        $q      = '?action=purchases&sort=' . $col . '&dir=' . $newDir . '&page=' . $page
+                . ($search !== '' ? '&search=' . urlencode($search) : '')
+                . ($statusFilter !== '' ? '&status=' . urlencode($statusFilter) : '')
+                . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '');
         return '<a href="' . htmlspecialchars($q) . '" style="color:inherit;text-decoration:none;">' . $label . $arrow . '</a>';
     };
     // Helper voor paginatielinks
-    $pageLink = function(int $p) use ($sort, $dir, $search): string {
-        return '?action=purchases&sort=' . $sort . '&dir=' . $dir . ($search !== '' ? '&search=' . urlencode($search) : '') . '&page=' . $p;
+    $pageLink = function(int $p) use ($sort, $dir, $search, $statusFilter, $amountFilter): string {
+        return '?action=purchases&sort=' . $sort . '&dir=' . $dir . '&page=' . $p
+             . ($search !== '' ? '&search=' . urlencode($search) : '')
+             . ($statusFilter !== '' ? '&status=' . urlencode($statusFilter) : '')
+             . ($amountFilter !== '' ? '&amount=' . urlencode($amountFilter) : '');
     };
+    // Helper voor filter-URL (behoudt huidige sortering en zoekterm)
+    $filterBase = '?action=purchases&sort=' . $sort . '&dir=' . $dir . '&page=1'
+                . ($search !== '' ? '&search=' . urlencode($search) : '');
 ?>
 
 <div class="page-header">
@@ -714,10 +738,10 @@ elseif ($action === 'purchases'):
 
 <form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;">
     <input type="hidden" name="action" value="purchases">
-    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:inherit;">
+    <input type="text" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="Zoek op gebruiker, e-mail of video..." style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:4px;font-size:.9rem;background:var(--surface);color:#eee;">
     <button type="submit" class="btn btn-sm btn-primary">Zoeken</button>
-    <?php if ($search !== ''): ?>
-        <a href="?action=purchases" class="btn btn-sm btn-secondary">Wis</a>
+    <?php if ($search !== '' || $statusFilter !== '' || $amountFilter !== ''): ?>
+        <a href="?action=purchases" class="btn btn-sm btn-secondary">Wis alle filters</a>
     <?php endif; ?>
 </form>
 
@@ -736,6 +760,32 @@ elseif ($action === 'purchases'):
                 <th><?= $sortLink('paid_at', 'Betaald op') ?></th>
                 <th>Mollie</th>
                 <th>Acties</th>
+            </tr>
+            <tr style="background:var(--surface-hover, rgba(255,255,255,.02));">
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:#ccc;">
+                        <option value="<?= $filterBase ?>" <?= $amountFilter === '' ? 'selected' : '' ?>>Alle bedragen</option>
+                        <?php foreach ($distinctAmounts as $amt): $amtFloat = (float) $amt; if ($amtFloat <= 0) continue; ?>
+                            <option value="<?= $filterBase . '&amount=' . urlencode((string) $amt) ?>" <?= $amountFilter === (string) $amt ? 'selected' : '' ?>>
+                                €&nbsp;<?= number_format($amtFloat, 2, ',', '.') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <td>
+                    <select onchange="location.href=this.value" style="width:100%;padding:.2rem;font-size:.75rem;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:#ccc;">
+                        <option value="<?= $filterBase ?>" <?= $statusFilter === '' ? 'selected' : '' ?>>Alle</option>
+                        <?php foreach ($distinctStatuses as $st): ?>
+                            <option value="<?= $filterBase . '&status=' . urlencode($st) ?>" <?= $statusFilter === $st ? 'selected' : '' ?>><?= htmlspecialchars($st, ENT_QUOTES, 'UTF-8') ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <td></td>
+                <td></td>
+                <td></td>
             </tr>
         </thead>
         <tbody>
