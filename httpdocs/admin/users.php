@@ -98,6 +98,7 @@ $ipFilter     = $_GET['ips']     ?? '';
 $purchFilter  = $_GET['purchases'] ?? '';
 
 $allowedSorts = [
+    'id'             => 'u.id',
     'last_activity'  => 'u.last_activity',
     'created_at'     => 'u.created_at',
     'name'           => 'u.name',
@@ -298,7 +299,7 @@ $sortLink = function(string $col, string $label) use ($sort, $dir, $search, $rol
     <table class="data-table">
         <thead>
             <tr>
-                <th>ID</th>
+                <th><?= $sortLink('id', 'ID') ?></th>
                 <th><?= $sortLink('name', 'Naam') ?></th>
                 <th><?= $sortLink('email', 'E-mail') ?></th>
                 <th><?= $sortLink('created_at', 'Geregistreerd') ?></th>
