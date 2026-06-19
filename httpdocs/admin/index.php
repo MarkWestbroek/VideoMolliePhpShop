@@ -241,6 +241,63 @@ if ($action === 'purchases') {
     )->fetchAll();
 }
 
+$salesOverview = null;
+if ($action === 'sales_overview') {
+    // Alle unieke bedragen (kolommen) — aflopend sorteren
+    $amounts = db()->query(
+        "SELECT DISTINCT amount FROM purchases WHERE status = 'paid' ORDER BY amount DESC"
+    )->fetchAll(\PDO::FETCH_COLUMN, 0);
+
+    // Per video, per bedrag: aantal aankopen + totaalopbrengst
+    $rows = db()->query(
+        "SELECT v.id, v.title,
+                p.amount,
+                COUNT(*) AS cnt,
+                SUM(p.amount) AS subtotal
+         FROM purchases p
+         JOIN videos v ON v.id = p.video_id
+         WHERE p.status = 'paid'
+         GROUP BY v.id, v.title, p.amount
+         ORDER BY v.title"
+    )->fetchAll();
+
+    // Bouw pivot: video_id => [ title, amounts => [amount => count], row_total ]
+    $pivot = [];
+    foreach ($rows as $r) {
+        $vid = (int) $r['id'];
+        if (!isset($pivot[$vid])) {
+            $pivot[$vid] = [
+                'title'   => $r['title'],
+                'amounts' => [],
+                'total'   => 0.0,
+            ];
+        }
+        $amt = (float) $r['amount'];
+        $pivot[$vid]['amounts'][$amt] = (int) $r['cnt'];
+        $pivot[$vid]['total'] += (float) $r['subtotal'];
+    }
+
+    // Kolomtotalen + grand total
+    $colTotals = [];
+    $grandTotal = 0.0;
+    foreach ($amounts as $amt) {
+        $colTotals[$amt] = 0;
+    }
+    foreach ($pivot as $vid => $data) {
+        foreach ($data['amounts'] as $amt => $cnt) {
+            $colTotals[$amt] = ($colTotals[$amt] ?? 0) + $cnt;
+        }
+        $grandTotal += $data['total'];
+    }
+
+    $salesOverview = [
+        'amounts'    => $amounts,
+        'pivot'      => $pivot,
+        'colTotals'  => $colTotals,
+        'grandTotal' => $grandTotal,
+    ];
+}
+
 // ============================================================
 // View
 // ============================================================
@@ -259,6 +316,7 @@ require_once __DIR__ . '/../includes/header.php';
 <nav style="display:flex;gap:.75rem;margin-bottom:1.75rem;border-bottom:1px solid var(--border);padding-bottom:.75rem;flex-wrap:wrap;">
     <a href="?action=dashboard"  class="btn btn-sm <?= $action === 'dashboard'  ? 'btn-primary' : 'btn-secondary' ?>">Video's</a>
     <a href="?action=purchases"  class="btn btn-sm <?= $action === 'purchases'  ? 'btn-primary' : 'btn-secondary' ?>">Verkopen</a>
+    <a href="?action=sales_overview" class="btn btn-sm <?= $action === 'sales_overview' ? 'btn-primary' : 'btn-secondary' ?>">Overzicht</a>
     <a href="?action=add_video"  class="btn btn-sm <?= $action === 'add_video'  ? 'btn-primary' : 'btn-secondary' ?>">+ Video toevoegen</a>
     <a href="<?= BASE_URL ?>/admin/users.php"    class="btn btn-sm btn-secondary">&#9654; Gebruikers</a>
     <a href="<?= BASE_URL ?>/admin/staffels.php" class="btn btn-sm btn-secondary">&#9654; Staffels</a>
@@ -628,6 +686,66 @@ elseif ($action === 'purchases'): ?>
             </tr>
         <?php endforeach; ?>
         </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<?php
+// ---- Verkoopoverzicht (pivot) -----------------------------
+elseif ($action === 'sales_overview' && $salesOverview): ?>
+<div class="page-header">
+    <h1>Verkoopoverzicht</h1>
+    <span class="text-muted" style="font-size:.9rem">Aantallen betaalde aankopen per video × bedrag</span>
+</div>
+
+<?php if (empty($salesOverview['pivot'])): ?>
+    <p class="text-muted">Nog geen betaalde aankopen.</p>
+<?php else: ?>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Video</th>
+                <?php foreach ($salesOverview['amounts'] as $amt): ?>
+                    <th style="text-align:right;">€&nbsp;<?= number_format((float) $amt, 2, ',', '.') ?></th>
+                <?php endforeach; ?>
+                <th style="text-align:right;">Totaal</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($salesOverview['pivot'] as $vid => $data): ?>
+            <tr>
+                <td><?= htmlspecialchars($data['title'], ENT_QUOTES, 'UTF-8') ?></td>
+                <?php foreach ($salesOverview['amounts'] as $amt): ?>
+                    <td style="text-align:right;">
+                        <?= ($data['amounts'][$amt] ?? 0) > 0 ? (int)($data['amounts'][$amt] ?? 0) : '<span class="text-muted">—</span>' ?>
+                    </td>
+                <?php endforeach; ?>
+                <td style="text-align:right;font-weight:600;">
+                    &euro;&nbsp;<?= number_format($data['total'], 2, ',', '.') ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <tr style="font-weight:700;background:var(--surface-hover, rgba(255,255,255,.04));">
+                <td>Aantal</td>
+                <?php $grandCount = 0; foreach ($salesOverview['amounts'] as $amt): ?>
+                    <?php $cnt = (int)($salesOverview['colTotals'][$amt] ?? 0); $grandCount += $cnt; ?>
+                    <td style="text-align:right;"><?= $cnt > 0 ? $cnt : '<span class="text-muted">—</span>' ?></td>
+                <?php endforeach; ?>
+                <td style="text-align:right;"><?= $grandCount ?></td>
+            </tr>
+            <tr style="font-weight:700;background:var(--surface-hover, rgba(255,255,255,.04));">
+                <td>Omzet</td>
+                <?php foreach ($salesOverview['amounts'] as $amt): ?>
+                    <td style="text-align:right;"></td>
+                <?php endforeach; ?>
+                <td style="text-align:right;">
+                    &euro;&nbsp;<?= number_format($salesOverview['grandTotal'], 2, ',', '.') ?>
+                </td>
+            </tr>
+        </tfoot>
     </table>
 </div>
 <?php endif; ?>
