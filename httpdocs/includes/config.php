@@ -60,6 +60,17 @@ if (file_exists(__DIR__ . '/config.local.php')) {
 // ============================================================
 // Sessie-instellingen (niet aanpassen)
 // ============================================================
+
+// Eigen sessiemap voorkomt dat de PHP garbage collector van andere
+// sites op dezelfde shared server jouw sessies opruimt.
+$sessionDir = rtrim(VIDEO_PATH, '/\\') . '/../sessions';
+if (!is_dir($sessionDir)) {
+    @mkdir($sessionDir, 0700, true);
+}
+if (is_dir($sessionDir) && is_writable($sessionDir)) {
+    ini_set('session.save_path', $sessionDir);
+}
+
 ini_set('session.cookie_httponly', '1');
 ini_set('session.cookie_secure',   '1');
 ini_set('session.use_strict_mode', '1');

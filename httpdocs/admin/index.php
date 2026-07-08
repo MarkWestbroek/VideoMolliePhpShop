@@ -36,11 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename, vimeo_id, is_test) VALUES (?,?,?,?,?,?,?,?)'
+                'INSERT INTO videos (title, description, price, staffel_id, event_id, filename, vimeo_id, vimeo_download_url, download_after, is_test) VALUES (?,?,?,?,?,?,?,?,?,?)'
             );
             $vimeoId  = trim($_POST['vimeo_id'] ?? '') !== '' ? trim($_POST['vimeo_id']) : null;
+            $vimeoDownloadUrl = trim($_POST['vimeo_download_url'] ?? '') !== '' ? trim($_POST['vimeo_download_url']) : null;
+            $downloadAfter    = trim($_POST['download_after'] ?? '') !== '' ? trim($_POST['download_after']) : null;
             $isTest   = isset($_POST['is_test']) ? 1 : 0;
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $isTest]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $vimeoDownloadUrl, $downloadAfter, $isTest]);
             $message = 'Video toegevoegd.';
             $action  = 'dashboard';
         }
@@ -67,11 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $safeFilename  = basename($filename);
             $fallbackPrice = $isGratis ? 0.0 : (($price !== '' && is_numeric($price)) ? (float) $price : 0.01);
             $stmt = db()->prepare(
-                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, vimeo_id=?, active=?, is_test=? WHERE id=?'
+                'UPDATE videos SET title=?, description=?, price=?, staffel_id=?, event_id=?, filename=?, vimeo_id=?, vimeo_download_url=?, download_after=?, active=?, is_test=? WHERE id=?'
             );
             $vimeoId  = trim($_POST['vimeo_id'] ?? '') !== '' ? trim($_POST['vimeo_id']) : null;
+            $vimeoDownloadUrl = trim($_POST['vimeo_download_url'] ?? '') !== '' ? trim($_POST['vimeo_download_url']) : null;
+            $downloadAfter    = trim($_POST['download_after'] ?? '') !== '' ? trim($_POST['download_after']) : null;
             $isTest   = isset($_POST['is_test']) ? 1 : 0;
-            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $active, $isTest, $id]);
+            $stmt->execute([$title, $description, $fallbackPrice, $staffelId, $eventId, $safeFilename, $vimeoId, $vimeoDownloadUrl, $downloadAfter, $active, $isTest, $id]);
             $message = 'Video bijgewerkt.';
             $action  = 'dashboard';
         }
@@ -689,6 +693,21 @@ elseif ($action === 'add_video'): ?>
         </div>
 
         <div class="form-group">
+            <label for="vimeo_download_url-add">Download-link (optioneel, Vimeo)</label>
+            <input type="text" id="vimeo_download_url-add" name="vimeo_download_url" maxlength="255"
+                   value="<?= htmlspecialchars($_POST['vimeo_download_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                   placeholder="https://vimeo.com/... ">
+            <p class="form-hint">Alleen voor Vimeo: de reviewlink met downloadknop. Bijv: <code>https://vimeo.com/1205146073/c5cab9a481</code>. Voor lokale video's leeg laten.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="download_after-add">Download beschikbaar vanaf (optioneel)</label>
+            <input type="date" id="download_after-add" name="download_after"
+                   value="<?= htmlspecialchars($_POST['download_after'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <p class="form-hint">Vanaf deze datum verschijnt de downloadknop op de videopagina. Werkt voor zowel Vimeo als lokale video's. Laat leeg om nooit te tonen.</p>
+        </div>
+
+        <div class="form-group">
             <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;">
                 <input type="checkbox" id="is_test-add" name="is_test" value="1"
                        <?= isset($_POST['is_test']) ? 'checked' : '' ?>>
@@ -814,6 +833,21 @@ elseif ($action === 'edit_video' && $video): ?>
                    value="<?= htmlspecialchars($_POST['vimeo_id'] ?? $video['vimeo_id'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                    placeholder="Laat leeg voor lokale video">
             <p class="form-hint">Als je een Vimeo ID invult, wordt de video via Vimeo gestreamd. Het bestandsnaamveld mag dan leeg zijn.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="vimeo_download_url-edit">Download-link (optioneel, Vimeo)</label>
+            <input type="text" id="vimeo_download_url-edit" name="vimeo_download_url" maxlength="255"
+                   value="<?= htmlspecialchars($_POST['vimeo_download_url'] ?? $video['vimeo_download_url'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                   placeholder="https://vimeo.com/... ">
+            <p class="form-hint">Alleen voor Vimeo: de reviewlink met downloadknop. Voor lokale video's leeg laten.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="download_after-edit">Download beschikbaar vanaf (optioneel)</label>
+            <input type="date" id="download_after-edit" name="download_after"
+                   value="<?= htmlspecialchars($_POST['download_after'] ?? $video['download_after'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+            <p class="form-hint">Vanaf deze datum verschijnt de downloadknop op de videopagina. Werkt voor zowel Vimeo als lokale video's. Laat leeg om nooit te tonen.</p>
         </div>
 
         <div class="form-group">

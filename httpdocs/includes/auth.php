@@ -186,51 +186,117 @@ function lookupIpInfo(string $ip): ?array
  *  - Als huidige IP nieuw is en er zijn al IP_TRACK_MAX actieve IP's → blokkade
  *  - Anders: voeg IP toe → geen blokkade
  *
+ *  - IPv6: alleen het /56-netwerkdeel (eerste 7 bytes) telt als "IP".
+ *    /56 i.p.v. /64 omdat mobiele providers per zendmast een ander
+ *    /64-subnet toewijzen; /56 is het typische klantprefix.
+ *
  * @param bool $enforceLimit Als false, altijd loggen zonder blokkade (voor admins)
  * @return bool true als video-toegang geblokkeerd moet worden
  */
+
+/**
+ * Normaliseer een IP-adres voor tracking-doeleinden.
+ * IPv4: ongewijzigd teruggeven.
+ * IPv6: alleen het /56 netwerkprefix behouden (eerste 7 bytes / 3,5 blokken),
+ *       geëxpandeerd naar volledige notatie en lowercase.
+ *
+ *       /56 i.p.v. /64 omdat mobiele providers (KPN e.a.) per zendmast
+ *       een ander /64-subnet toewijzen, maar de /56 per klant stabiel is.
+ */
+function normalizeIpForTracking(string $ip): string
+{
+    // IPv4: return as-is
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return $ip;
+    }
+
+    // IPv6: valideren, expanderen, en alleen /56 prefix behouden
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        // inet_pton + inet_ntop geeft volledig geëxpandeerde notatie
+        $binary = @inet_pton($ip);
+        if ($binary === false || strlen($binary) !== 16) {
+            return $ip; // fallback
+        }
+        // Eerste 56 bits (7 bytes) behouden, rest op nul
+        $prefix = substr($binary, 0, 7) . str_repeat("\x00", 9);
+        $full = strtolower(inet_ntop($prefix));
+        return $full;
+    }
+
+    return $ip; // onbekend formaat
+}
+
 function trackLoginIp(int $userId, bool $enforceLimit = true): bool
 {
-    $ip   = getClientIp();
-    $ttl  = IP_TRACK_TTL;
+    $ip       = getClientIp();
+    $trackIp  = normalizeIpForTracking($ip);
+    $ttl      = IP_TRACK_TTL;
     $expireTime = date('Y-m-d H:i:s', time() - $ttl);
 
-    error_log("Login IP-track start: user {$userId}, huidig IP {$ip}, TTL {$ttl}s" . ($enforceLimit ? '' : ' (admin, geen limiet)'));
+    error_log("Login IP-track start: user {$userId}, huidig IP {$ip}, tracking als {$trackIp}, TTL {$ttl}s" . ($enforceLimit ? '' : ' (admin, geen limiet)'));
 
     // Verwijder verlopen IP's
     db()->prepare('DELETE FROM login_ips WHERE user_id = ? AND last_seen < ?')
         ->execute([$userId, $expireTime]);
 
-    // Check of huidige IP al bestaat
-    $stmt = db()->prepare('SELECT id FROM login_ips WHERE user_id = ? AND ip_address = ? LIMIT 1');
-    $stmt->execute([$userId, $ip]);
+    // Check of huidige IP (genormaliseerd) al bestaat.
+    // Voor IPv6 gebruiken we LIKE-matching zodat ook oude volledige adressen
+    // gematcht worden tijdens de overgangsperiode.
+    $isIpv6 = (str_contains($trackIp, ':'));
+    if ($isIpv6) {
+        $stmt = db()->prepare('SELECT id FROM login_ips WHERE user_id = ? AND ip_address LIKE ? LIMIT 1');
+        $stmt->execute([$userId, $trackIp . '%']);
+    } else {
+        $stmt = db()->prepare('SELECT id FROM login_ips WHERE user_id = ? AND ip_address = ? LIMIT 1');
+        $stmt->execute([$userId, $trackIp]);
+    }
 
     if ($stmt->fetch()) {
         // IP al bekend → update last_seen, geen blokkade
-        db()->prepare('UPDATE login_ips SET last_seen = NOW() WHERE user_id = ? AND ip_address = ?')
-            ->execute([$userId, $ip]);
-        return false;
-    }
-
-    // Nieuw IP — admin: altijd registreren, geen limiet
-    if (!$enforceLimit) {
-        $ipInfo = lookupIpInfo($ip);
-        if ($ipInfo) {
-            db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
-                ->execute([$userId, $ip, $ipInfo['isp'], $ipInfo['is_mobile']]);
+        if ($isIpv6) {
+            db()->prepare('UPDATE login_ips SET last_seen = NOW(), ip_address = ? WHERE user_id = ? AND ip_address LIKE ?')
+                ->execute([$trackIp, $userId, $trackIp . '%']);
         } else {
-            db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
-                ->execute([$userId, $ip]);
+            db()->prepare('UPDATE login_ips SET last_seen = NOW() WHERE user_id = ? AND ip_address = ?')
+                ->execute([$userId, $trackIp]);
         }
         return false;
     }
 
-    // Gewone gebruiker: tel bestaande IP's, blokkeer bij overschrijding
-    $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
+    // Nieuw IP — zoek ISP/mobiel-info op (één API-call)
+    $ipInfo   = lookupIpInfo($ip);
+    $isp      = $ipInfo['isp']       ?? '';
+    $isMobile = $ipInfo['is_mobile'] ?? 0;
+
+    // Admin: altijd registreren, geen limiet
+    if (!$enforceLimit) {
+        if ($isp !== '') {
+            db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
+                ->execute([$userId, $trackIp, $isp, $isMobile]);
+        } else {
+            db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
+                ->execute([$userId, $trackIp]);
+        }
+        return false;
+    }
+
+    // Mobiel IP: altijd registreren, nooit blokkeren.
+    // Mobiele IPv6-adressen wisselen per zendmast (zelfs /48 verschilt per regio),
+    // dus die tellen we niet mee voor de limiet — anders wordt élke mobiele gebruiker
+    // na een paar ritten met de auto geblokkeerd.
+    if ($isMobile) {
+        db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, 1)')
+            ->execute([$userId, $trackIp, $isp]);
+        error_log("Login IP-track: user {$userId}, mobiel IP {$trackIp} ({$isp}) — niet meetellen voor limiet");
+        return false;
+    }
+
+    // Niet-mobiel: tel bestaande niet-mobiele IP's
+    $stmt = db()->prepare("SELECT COUNT(*) FROM login_ips WHERE user_id = ? AND (is_mobile IS NULL OR is_mobile = 0)");
     $stmt->execute([$userId]);
     $cnt = (int) $stmt->fetchColumn();
 
-    error_log("Login IP-track: user {$userId}, nieuw IP {$ip}, al {$cnt} bestaande IP's, max " . IP_TRACK_MAX);
+    error_log("Login IP-track: user {$userId}, nieuw IP {$ip} (track als {$trackIp}), al {$cnt} bestaande niet-mobiele IP's, max " . IP_TRACK_MAX);
 
     if ($cnt >= IP_TRACK_MAX) {
         // Limiet bereikt: blokkeer video-toegang, voeg IP niet toe
@@ -258,14 +324,13 @@ function trackLoginIp(int $userId, bool $enforceLimit = true): bool
         return true;
     }
 
-    // Registreer nieuw IP (voor admins én onder-limiet gebruikers)
-    $ipInfo = lookupIpInfo($ip);
-    if ($ipInfo) {
+    // Registreer nieuw IP (onder-limiet, niet-mobiel)
+    if ($isp !== '') {
         db()->prepare('INSERT INTO login_ips (user_id, ip_address, isp, is_mobile) VALUES (?, ?, ?, ?)')
-            ->execute([$userId, $ip, $ipInfo['isp'], $ipInfo['is_mobile']]);
+            ->execute([$userId, $trackIp, $isp, $isMobile]);
     } else {
         db()->prepare('INSERT INTO login_ips (user_id, ip_address) VALUES (?, ?)')
-            ->execute([$userId, $ip]);
+            ->execute([$userId, $trackIp]);
     }
     return false;
 }
@@ -296,7 +361,7 @@ function getViewingBlockedStatus(): array
     db()->prepare('DELETE FROM login_ips WHERE user_id = ? AND last_seen < ?')
         ->execute([$userId, $expireTime]);
 
-    $stmt = db()->prepare('SELECT COUNT(*) FROM login_ips WHERE user_id = ?');
+    $stmt = db()->prepare("SELECT COUNT(*) FROM login_ips WHERE user_id = ? AND (is_mobile IS NULL OR is_mobile = 0)");
     $stmt->execute([$userId]);
     $cnt = (int) $stmt->fetchColumn();
 

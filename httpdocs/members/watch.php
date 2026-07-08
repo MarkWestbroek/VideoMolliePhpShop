@@ -23,7 +23,7 @@ if ($videoId <= 0) {
 }
 
 // Video ophalen
-$stmt = db()->prepare('SELECT id, title, description, event_id, vimeo_id FROM videos WHERE id = ? AND active = 1' . ($user['is_admin'] ? '' : ' AND is_test = 0') . ' LIMIT 1');
+$stmt = db()->prepare('SELECT id, title, description, event_id, vimeo_id, vimeo_download_url, download_after FROM videos WHERE id = ? AND active = 1' . ($user['is_admin'] ? '' : ' AND is_test = 0') . ' LIMIT 1');
 $stmt->execute([$videoId]);
 $video = $stmt->fetch();
 
@@ -56,6 +56,13 @@ if (empty($_SESSION[$viewKey])) {
 $_SESSION['streaming_video_id'] = $videoId;
 $_SESSION['streaming_since']    = time();
 
+// Download beschikbaar?
+$isVimeo    = !empty($video['vimeo_id']);
+$canDownload = !empty($video['download_after']) && date('Y-m-d') >= $video['download_after'];
+$downloadUrl = $isVimeo
+    ? ($video['vimeo_download_url'] ?? '')
+    : (BASE_URL . '/stream.php?id=' . (int) $video['id'] . '&dl=1');
+
 $pageTitle = htmlspecialchars($video['title'], ENT_QUOTES, 'UTF-8') . ' — HB Foto & Video';
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -81,7 +88,7 @@ require_once __DIR__ . '/../includes/header.php';
     <?php else: ?>
     <video
         controls
-        controlsList="nodownload noremoteplayback"
+        controlsList="<?= $canDownload ? 'noremoteplayback' : 'nodownload noremoteplayback' ?>"
         disablePictureInPicture
         preload="metadata"
         playsinline
@@ -93,6 +100,23 @@ require_once __DIR__ . '/../includes/header.php';
     </video>
     <?php endif; ?>
 </div>
+
+<?php
+// Downloadknop: alleen tonen als download_after is bereikt
+?>
+<?php if ($canDownload && $downloadUrl): ?>
+<div style="margin-top:1.5rem;text-align:center;">
+    <a href="<?= htmlspecialchars($downloadUrl, ENT_QUOTES, 'UTF-8') ?>"
+       <?= $isVimeo ? 'target="_blank" rel="noopener"' : '' ?>
+       class="btn"
+       style="background:#27ae60;color:#fff;font-size:1rem;padding:.75rem 2rem;display:inline-block;text-decoration:none;border-radius:6px;">
+        &#128229; Video downloaden
+    </a>
+    <p class="text-muted" style="font-size:.8rem;margin-top:.5rem;">
+        <?= $isVimeo ? 'Je wordt doorgestuurd naar Vimeo waar je de video kunt downloaden.' : 'Klik om de video te downloaden naar je apparaat.' ?>
+    </p>
+</div>
+<?php endif; ?>
 
 <script>
 // Heartbeat: elke 30s streaming_at updaten zolang de video speelt

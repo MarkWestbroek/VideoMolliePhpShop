@@ -179,7 +179,7 @@ $users = db()->prepare(
             COUNT(DISTINCT ea.event_id)   AS event_count,
             COUNT(DISTINCT p.id)          AS purchase_count,
             SUM(CASE WHEN p.status = 'paid' THEN p.amount ELSE 0 END) AS total_paid,
-            COALESCE((SELECT COUNT(*) FROM login_ips li WHERE li.user_id = u.id AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY)), 0) AS ip_count
+            COALESCE((SELECT COUNT(*) FROM login_ips li WHERE li.user_id = u.id AND li.last_seen >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND (li.is_mobile IS NULL OR li.is_mobile = 0)), 0) AS ip_count
      FROM users u
      LEFT JOIN event_access ea ON ea.user_id = u.id
      LEFT JOIN purchases    p  ON p.user_id  = u.id

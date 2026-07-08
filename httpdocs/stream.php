@@ -86,6 +86,7 @@ if (!is_file($filePath) || !is_readable($filePath)) {
 // 6. Bestand streamen met Range Request ondersteuning
 $fileSize = filesize($filePath);
 $mimeType = 'video/mp4';
+$isDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
 $start = 0;
 $end   = $fileSize - 1;
@@ -100,14 +101,21 @@ ignore_user_abort(true);
 set_time_limit(0);
 
 header('Content-Type: ' . $mimeType);
-header('Content-Disposition: inline');
-header('Accept-Ranges: bytes');
+if ($isDownload) {
+    // Download: forceer save-as dialoog met originele bestandsnaam
+    header('Content-Disposition: attachment; filename="' . addslashes($filename) . '"');
+    header('Content-Length: ' . $fileSize);
+} else {
+    header('Content-Disposition: inline');
+    header('Accept-Ranges: bytes');
+}
 header('Cache-Control: no-store, no-cache, private');
 header('X-Content-Type-Options: nosniff');
 header('X-Robots-Tag: noindex');
 
 // Range-verzoek afhandelen (nodig voor seekbar in videospeler)
-if (isset($_SERVER['HTTP_RANGE'])) {
+// Bij download slaan we Range over — hele bestand in één keer
+if (!$isDownload && isset($_SERVER['HTTP_RANGE'])) {
     $rangeHeader = $_SERVER['HTTP_RANGE'];
 
     if (!preg_match('/^bytes=(\d*)-(\d*)$/', $rangeHeader, $m)) {

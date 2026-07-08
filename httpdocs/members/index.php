@@ -149,6 +149,14 @@ require_once __DIR__ . '/../includes/header.php';
     <a href="<?= BASE_URL ?>/members/account.php">Voer deze in op je account</a>
     om de bijbehorende video's te zien.
 </p>
+<p class="text-muted" style="margin-bottom:1.5rem;font-size:.9rem;">
+    De meeste video's zijn na het bestellen in eerste instantie alleen te streamen via deze site.
+    Ongeveer na twee maanden is de video ook als download beschikbaar.
+</p>
+<p class="text-muted" style="margin-bottom:1.5rem;font-size:.9rem;">
+    Zodra je op de "koop toegang"-knop klikt, wordt je direct naar de betaal-pagina geleid en kun je daarna gelijk je video bekijken.
+    <br>Wil je meer dan één video kopen van een event waar een prijsstaffel geldt, dan wordt de prijs automatisch aangepast na aanschaf van de eerste video.
+</p>
 
 <?php if (empty($videos)): ?>
     <p class="text-muted">Er zijn nog geen video's voor je beschikbaar. Heb je een event-toegangscode?

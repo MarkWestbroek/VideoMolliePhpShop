@@ -26,11 +26,19 @@ if (!empty($_GET['redirect'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // CSRF manueel checken zodat we netjes de fout in het formulier kunnen tonen
-    $csrfToken = $_POST['csrf_token'] ?? '';
-    if (!hash_equals(csrfToken(), $csrfToken)) {
-        // Token verlopen (sessie timeout of terug-knop) — toon vriendelijke melding
-        $error = 'Je sessie is verlopen. Probeer opnieuw in te loggen.';
-        unset($_SESSION['csrf_token']); // Forceer nieuw token
+    $csrfToken     = $_POST['csrf_token'] ?? '';
+    $sessionToken  = $_SESSION['csrf_token'] ?? null;
+    if ($sessionToken === null || !hash_equals($sessionToken, $csrfToken)) {
+        // Token verlopen of sessie leeg (sessie GC op shared hosting):
+        // forceer nieuw token, maar toon géén fout als de sessie gewoon leeg was
+        // (gebruiker ziet hetzelfde formulier, kan direct opnieuw versturen)
+        unset($_SESSION['csrf_token']);
+        if ($sessionToken === null) {
+            // Sessie was leeg — stille refresh, geen foutmelding
+            $error = '';
+        } else {
+            $error = 'Je sessie is verlopen. Probeer opnieuw in te loggen.';
+        }
     } else {
         unset($_SESSION['csrf_token']); // Token verbruikt
 
